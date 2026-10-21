@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Garaje Bravo</title>
+  <meta name="theme-color" content="#05060a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Garaje">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/estilos.css">
+</head>
+<body>
+  <main id="vista" tabindex="-1"></main>
+
+  <nav class="nav" aria-label="Principal">
+    <a href="#/inicio" data-ruta="inicio" class="nav-item">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5M5.5 10v10h13V10"/></svg>
+      <span>Inicio</span>
+    </a>
+    <a href="#/analisis" data-ruta="analisis" class="nav-item">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
+      <span>Análisis</span>
+    </a>
+    <a href="#/registrar" data-ruta="registrar" class="nav-mas" aria-label="Registrar">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+    </a>
+    <a href="#/recordatorios" data-ruta="recordatorios" class="nav-item">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 17V11a6 6 0 0 1 12 0v6l1.5 2h-15zM10 21h4"/></svg>
+      <span>Avisos</span>
+      <b class="badge" id="badge" hidden></b>
+    </a>
+    <a href="#/mas" data-ruta="mas" class="nav-item">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h.01M12 12h.01M19 12h.01"/></svg>
+      <span>Más</span>
+    </a>
+  </nav>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
