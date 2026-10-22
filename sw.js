@@ -1,6 +1,6 @@
 // Service worker: red primero para los archivos de la app, caché como respaldo sin conexión.
 // Subir N en CACHE cada vez que cambie cualquier archivo de la app.
-const CACHE = 'garaje-v17';
+const CACHE = 'garaje-v18';
 const ARCHIVOS = [
   './', 'index.html', 'manifest.json', 'css/estilos.css',
   'js/main.js', 'js/estado.js', 'js/sync.js', 'js/calc.js', 'js/exportar.js', 'js/foto.js', 'js/util.js',

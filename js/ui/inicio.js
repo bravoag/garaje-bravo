@@ -1,7 +1,7 @@
 // ui/inicio.js — resumen de la flota y una tarjeta por vehículo. Solo pinta: los cálculos vienen de calc.js.
 import { datos, lista } from '../estado.js';
 import { esc, hoyISO, formatoUSD, formatoKm, formatoNumero } from '../util.js';
-import { kpisGlobal, kpisVehiculo, kmActual, recordatorios, alertasPorVehiculo } from '../calc.js';
+import { kpisGlobal, kpisVehiculo, kmActual, recordatorios, alertasPorVehiculo, puestaAPunto, ritmoUso } from '../calc.js';
 import { colorSeguro } from './componentes.js';
 
 const TODOS = { mantenimiento: true, combustible: true, seguros: true };
@@ -46,7 +46,11 @@ export function render(vista) {
     : '<span class="estado estado-ok"><span aria-hidden="true">✓</span> Todo al día</span>';
 
   const tarjetas = vehiculos.map(v => {
-    const k = kpisVehiculo(datos, v.id, TODO, TODOS, hoy);
+    const pp = puestaAPunto(datos, v.id, hoy);
+    // Terminada la puesta a punto, la tarjeta muestra la operación normal (el número que debe bajar); mientras tanto, lo acumulado.
+    const enOperacion = !pp.enCurso && pp.operacion && pp.operacion.km !== null;
+    const k = enOperacion ? pp.operacion : kpisVehiculo(datos, v.id, TODO, TODOS, hoy);
+    const ritmo = ritmoUso(datos, v.id, hoy);
     const a = alertas[v.id];
     return `
     <a class="tarjeta vehiculo-inicio" href="#/analisis/${esc(v.id)}" style="--c:${colorSeguro(v.color)}">
@@ -56,9 +60,11 @@ export function render(vista) {
         <span class="vi-km">${esc(formatoKm(kmActual(datos, v.id)))}</span>
       </span>
       <span class="vi-mini">
-        <span>Costo por km<b>${k.costoPorKm === null ? '—' : esc(formatoNumero(k.costoPorKm, 3)) + ' US$'}</b></span>
-        <span>Gasto mensual<b>${esc(formatoUSD(k.gastoMensual))}</b></span>
+        <span>Costo por km${enOperacion ? ' · operación' : ''}<b>${k.costoPorKm === null ? '—' : esc(formatoNumero(k.costoPorKm, 3)) + ' US$'}</b></span>
+        <span>Gasto mensual${enOperacion ? ' · operación' : ''}<b>${esc(formatoUSD(k.gastoMensual))}</b></span>
       </span>
+      ${ritmo ? `<span class="vi-ritmo">Ritmo: ${esc(formatoNumero(ritmo.kmPorDia, 0))} km/día · ~${esc(formatoKm(ritmo.kmAnual))}/año</span>` : ''}
+      ${pp.enCurso && pp.puesta.gasto > 0 ? `<span class="estado estado-sin-registro"><span aria-hidden="true">●</span> Puesta a punto en curso · ${esc(formatoUSD(pp.puesta.gasto))}</span>` : ''}
       ${chipAlerta(a, v.programados?.length > 0)}
     </a>`;
   }).join('');

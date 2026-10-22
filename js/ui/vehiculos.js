@@ -90,6 +90,8 @@ function formulario(vista, v) {
         ${campo('fechaCompra', 'Fecha de compra (opcional)', 'type="date"')}
         ${campo('precioCompra', 'Precio de compra USD (opcional)', 'type="number" inputmode="decimal" min="0" step="0.01"')}
       </div>
+      ${campo('puestaAPuntoHasta', 'Puesta a punto hasta (opcional)', 'type="date"')}
+      <p class="ayuda">Para un vehículo recién comprado: déjalo vacío mientras sigas poniéndolo al día. Cuando termines, pon la fecha del último trabajo: lo anterior cuenta como puesta a punto y lo posterior como operación normal.</p>
       <label class="interruptor"><input type="checkbox" name="usaSeguros" ${d.usaSeguros ? 'checked' : ''}> Usa seguros y documentos</label>
       <label class="campo">Notas<textarea class="entrada" name="notas" rows="2">${esc(d.notas ?? '')}</textarea></label>
 
@@ -189,7 +191,7 @@ function formulario(vista, v) {
       ...d,
       alias: texto('alias'), marca: texto('marca'), modelo: texto('modelo'), anio, placa: texto('placa'),
       color: f.get('color'), kmInicial, fechaAlta: texto('fechaAlta') || hoyISO(),
-      combustible: texto('combustible'), vin: texto('vin'), fechaCompra: texto('fechaCompra'), precioCompra: numero('precioCompra'),
+      combustible: texto('combustible'), vin: texto('vin'), fechaCompra: texto('fechaCompra'), precioCompra: numero('precioCompra'), puestaAPuntoHasta: texto('puestaAPuntoHasta') || null,
       usaSeguros: form.usaSeguros.checked, notas: texto('notas'), estado: d.estado ?? 'activo',
       programados: programados.map(p => ({ itemId: p.itemId, intervaloKm: p.intervaloKm || null, intervaloMeses: p.intervaloMeses || null })),
     });

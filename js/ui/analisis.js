@@ -1,8 +1,8 @@
 // ui/analisis.js — KPIs y gráficos. Todo el cálculo vive en calc.js; aquí solo se pinta.
 // Rutas: #/analisis (Global) y #/analisis/<vehiculoId>
 import { datos, lista } from '../estado.js';
-import { esc, hoyISO, formatoUSD, formatoKm, formatoNumero } from '../util.js';
-import { kpisGlobal, kpisVehiculo, periodoPreset } from '../calc.js';
+import { esc, hoyISO, formatoUSD, formatoKm, formatoNumero, formatoFecha } from '../util.js';
+import { kpisGlobal, kpisVehiculo, periodoPreset, puestaAPunto, inversionTotal, inversionFlota } from '../calc.js';
 import { colorSeguro } from './componentes.js';
 import { CATEGORICOS, COLOR_OTROS, limpiarGraficos, cargarChart, barrasApiladas, dona, lineas, mesesContinuos, etiquetaMes, tabla } from './graficos.js';
 
@@ -138,8 +138,70 @@ function pestanaGeneral({ k, vehiculoId, vehiculos }) {
     </section>` : '';
 
   const vacio = k.gasto === 0 ? '<p class="apagado">Sin gastos en este período. Prueba con otro período o registra un trabajo.</p>' : '';
-  return `${tarjetas}${vacio}${pv}${ranking}
+  return `${tarjetas}${vacio}${seccionInversion(vehiculoId)}${seccionPuestaAPunto(vehiculoId)}${seccionRepuestos(k)}${pv}${ranking}
     <p class="ayuda nota">El costo por km solo es confiable si registras el km con regularidad.</p>`;
+}
+
+// ---- Piezas de la pestaña General ----
+const partes = lista => lista.filter(p => p.valor > 0);
+function barraPartes(lista, descripcion) {
+  const v = partes(lista);
+  if (!v.length) return '';
+  return `<div class="particion" role="img" aria-label="${esc(descripcion)}">${v.map(p => `<i style="flex:${p.valor};background:${p.color}"></i>`).join('')}</div>
+    <div class="leyenda-html">${v.map(p => `<span><i style="background:${p.color}"></i>${esc(p.nombre)} <b>${esc(formatoUSD(p.valor))}</b></span>`).join('')}</div>`;
+}
+
+// Inversión desde la compra: no depende del filtro de período (es acumulada).
+function seccionInversion(vehiculoId) {
+  const hoy = hoyISO();
+  const inv = vehiculoId ? inversionTotal(datos, vehiculoId, hoy) : inversionFlota(datos, hoy);
+  if (!inv || inv.total === 0) return '';
+  const puestaEnCurso = vehiculoId ? inv.enCurso : false;
+  return `<section class="tarjeta">
+    <h2>Inversión desde la compra</h2>
+    <b class="franja-total">${esc(formatoUSD(inv.total))}</b>
+    ${barraPartes([
+      { nombre: 'Compra', valor: inv.compra ?? 0, color: CATEGORICOS[0] },
+      { nombre: puestaEnCurso ? 'Puesta a punto (en curso)' : 'Puesta a punto', valor: inv.puesta, color: CATEGORICOS[1] },
+      { nombre: 'Operación normal', valor: inv.operacion, color: CATEGORICOS[2] },
+    ], 'Reparto de la inversión total')}
+    ${inv.pctGastoSobreCompra !== null ? `<p class="ayuda">Lo gastado después de comprar equivale al ${esc(formatoNumero(inv.pctGastoSobreCompra, 1))} % del precio de compra.</p>` : '<p class="ayuda">Pon el precio de compra en el vehículo para ver esta proporción.</p>'}
+    <p class="ayuda">Es acumulado: no depende del período elegido arriba.</p>
+  </section>`;
+}
+
+// Puesta a punto (solo con un vehículo elegido): cuánto va y cómo se comporta la operación normal desde que termina.
+function seccionPuestaAPunto(vehiculoId) {
+  if (!vehiculoId) return '';
+  const p = puestaAPunto(datos, vehiculoId, hoyISO());
+  if (!p) return '';
+  const op = p.operacion;
+  return `<section class="tarjeta">
+    <h2>Puesta a punto</h2>
+    ${p.enCurso
+      ? `<p class="estado estado-proximo"><span aria-hidden="true">●</span> En curso · ${esc(formatoUSD(p.puesta.gasto))} invertidos</p>
+         <p class="ayuda">Cuando termines, <a href="#/vehiculos/${esc(vehiculoId)}">pon la fecha de fin en el vehículo</a>: desde ahí verás tu costo en operación normal.</p>`
+      : `<p class="estado estado-ok"><span aria-hidden="true">✓</span> Terminó el ${esc(formatoFecha(p.fin))} · ${esc(formatoUSD(p.puesta.gasto))}</p>
+         <h3 class="subtitulo">Operación normal desde entonces</h3>
+         ${op && op.gasto + (op.km ?? 0) > 0 ? `<div class="kpis">
+            ${tarjeta('mensual', 'Gasto mensual', usd(op.gastoMensual), [['Días', String(op.dias)]], 'kpi-calido')}
+            ${tarjeta('costo', 'Costo por km', usdKm(op.costoPorKm), [['Por día', usd(op.costoPorDia)], ['Km', op.km === null ? dash : formatoKm(op.km)]])}
+          </div>` : '<p class="ayuda">Aún sin gastos ni km después de esa fecha: aparecerán a medida que registres.</p>'}`}
+  </section>`;
+}
+
+// Repuestos vs servicios (líneas de los trabajos del período elegido).
+function seccionRepuestos(k) {
+  const total = k.gastoRepuestos + k.gastoServicios;
+  if (total <= 0) return '';
+  return `<section class="tarjeta">
+    <h2>Repuestos vs servicios</h2>
+    ${barraPartes([
+      { nombre: `Repuestos ${formatoNumero((k.gastoRepuestos / total) * 100, 0)} %`, valor: k.gastoRepuestos, color: CATEGORICOS[2] },
+      { nombre: `Servicios ${formatoNumero((k.gastoServicios / total) * 100, 0)} %`, valor: k.gastoServicios, color: CATEGORICOS[3] },
+    ], 'Reparto entre repuestos y servicios')}
+    ${k.gastoManoObra > 0 ? `<p class="ayuda">De los servicios, mano de obra: <b>${esc(formatoUSD(k.gastoManoObra))}</b> (${esc(formatoNumero((k.gastoManoObra / total) * 100, 0))} % del mantenimiento). Cuenta los ítems cuyo nombre empieza por «Mano de obra».</p>` : ''}
+  </section>`;
 }
 
 // ---------- Gasto ----------

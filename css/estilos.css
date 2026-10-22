@@ -330,6 +330,8 @@ a.opcion { text-decoration: none; }
 .vi-km { margin-left: auto; font: 700 20px var(--titulos); white-space: nowrap; }
 .vi-mini { display: grid; grid-template-columns: 1fr 1fr; gap: var(--e3); color: var(--apagado); font-size: 13px; }
 .vi-mini span { display: grid; }
+.vi-ritmo { color: var(--apagado); font-size: 14px; }
+.subtitulo { font: 700 18px var(--titulos); margin: var(--e3) 0 var(--e2); color: var(--apagado); }
 .vi-mini b { color: var(--texto); font: 800 20px var(--titulos); }
 .seccion-aviso { margin-bottom: var(--e5); }
 .seccion-aviso h2 { font-size: 22px; margin-bottom: var(--e3); }

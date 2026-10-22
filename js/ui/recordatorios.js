@@ -15,7 +15,8 @@ function detalleServicio(r) {
   const estado = [];
   if (r.kmRestantes !== null) estado.push(r.kmRestantes > 0 ? `faltan ${formatoKm(r.kmRestantes)}` : `pasado por ${formatoKm(-r.kmRestantes)}`);
   if (r.diasRestantes !== null) estado.push(r.diasRestantes > 0 ? `faltan ${plural(r.diasRestantes, 'día', 'días')}` : r.diasRestantes === 0 ? 'vence hoy' : `venció hace ${plural(-r.diasRestantes, 'día', 'días')}`);
-  return `Próximo ${objetivo} · ${estado.join(' · ')}`;
+  const estimada = r.fechaEstimada ? ` · ≈ ${formatoFecha(r.fechaEstimada)} (${r.limite === 'km' ? 'según tu ritmo de uso' : 'manda el plazo en meses'})` : '';
+  return `Próximo ${objetivo} · ${estado.join(' · ')}${estimada}`;
 }
 
 function detalleSeguro(s) {

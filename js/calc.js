@@ -171,10 +171,13 @@ export function kpisVehiculo(datos, vehiculoId, periodo, incluir, hoy) {
   // Mantenimiento por categoría y por ítem, a partir de las líneas.
   const porCategoria = {};
   const porItem = {};
+  let gastoRepuestos = 0, gastoServicios = 0, gastoManoObra = 0;
   for (const t of trabajos) {
     for (const l of t.lineas ?? []) {
       const item = (datos.items ?? []).find(i => i.id === l.itemId);
       const monto = l.cantidad * l.precioUnit;
+      if (item?.tipo === 'repuesto') gastoRepuestos += monto; else gastoServicios += monto;
+      if (normalizar(item?.nombre).includes('mano de obra')) gastoManoObra += monto;   // convención: ítems llamados «Mano de obra…»
       const cat = item?.categoria ?? 'Otros';
       porCategoria[cat] = (porCategoria[cat] ?? 0) + monto;
       porItem[l.itemId] = { itemId: l.itemId, nombre: item?.nombre ?? 'Ítem eliminado', gasto: (porItem[l.itemId]?.gasto ?? 0) + monto };
@@ -196,6 +199,7 @@ export function kpisVehiculo(datos, vehiculoId, periodo, incluir, hoy) {
     gastoMensual: gasto / meses,
     costoPorDia: dias > 0 ? gasto / dias : null,
     gastoPreventivo, gastoCorrectivo,
+    gastoRepuestos: redondear2(gastoRepuestos), gastoServicios: redondear2(gastoServicios), gastoManoObra: redondear2(gastoManoObra),
     preventivoPct: gastoTrabajos > 0 ? (gastoPreventivo / gastoTrabajos) * 100 : null,
     correctivoPct: gastoTrabajos > 0 ? (gastoCorrectivo / gastoTrabajos) * 100 : null,
     porCategoria, topItems,
@@ -251,6 +255,7 @@ export function kpisGlobal(datos, periodo, incluir, hoy) {
 
   return {
     rango: { inicio, fin }, dias, meses, gasto, km: km > 0 ? km : null,
+    gastoRepuestos: redondear2(suma(por, k => k.gastoRepuestos)), gastoServicios: redondear2(suma(por, k => k.gastoServicios)), gastoManoObra: redondear2(suma(por, k => k.gastoManoObra)),
     costoPorKm: km > 0 ? gasto / km : null,
     kmPorDolar: km > 0 && gasto > 0 ? km / gasto : null,
     kmDiario: km > 0 && dias > 0 ? km / dias : null,
@@ -266,6 +271,57 @@ export function kpisGlobal(datos, periodo, incluir, hoy) {
       .sort((a, b) => b.costoPorKm - a.costoPorKm),
     vehiculoMasCaro: por.length ? por.reduce((a, b) => (b.gasto > a.gasto ? b : a)).vehiculoId : null,
   };
+}
+
+// ---- Puesta a punto (auto usado recién comprado) ----
+// Una sola fecha por vehículo (`puestaAPuntoHasta`) divide TODO lo registrado: hasta esa fecha (inclusive) es puesta a punto;
+// desde el día siguiente es operación normal. Sin fecha (o en el futuro) la puesta a punto sigue en curso.
+const TODO_INCLUIDO = { mantenimiento: true, combustible: true, seguros: true };
+export function puestaAPunto(datos, vehiculoId, hoy) {
+  const v = vehiculoPorId(datos, vehiculoId);
+  if (!v) return null;
+  const fin = v.puestaAPuntoHasta || null;
+  const enCurso = !fin || fin > hoy;
+  const puesta = kpisVehiculo(datos, vehiculoId, { desde: null, hasta: enCurso ? null : fin }, TODO_INCLUIDO, hoy);
+  const operacion = !enCurso && fin < hoy ? kpisVehiculo(datos, vehiculoId, { desde: sumarDias(fin, 1), hasta: null }, TODO_INCLUIDO, hoy) : null;
+  return { fin, enCurso, puesta, operacion };
+}
+
+// Inversión desde la compra: precio de compra + gasto de puesta a punto + gasto de operación normal.
+export function inversionTotal(datos, vehiculoId, hoy) {
+  const v = vehiculoPorId(datos, vehiculoId);
+  if (!v) return null;
+  const p = puestaAPunto(datos, vehiculoId, hoy);
+  const compra = Number.isFinite(v.precioCompra) ? v.precioCompra : null;
+  const puesta = p.puesta.gasto, operacion = p.operacion?.gasto ?? 0;
+  return { compra, puesta, operacion, total: (compra ?? 0) + puesta + operacion, enCurso: p.enCurso,
+    pctGastoSobreCompra: compra ? ((puesta + operacion) / compra) * 100 : null };
+}
+
+export function inversionFlota(datos, hoy) {
+  const por = vivos(datos.vehiculos).map(v => inversionTotal(datos, v.id, hoy));
+  const compras = por.filter(i => i.compra !== null);
+  const compra = suma(compras, i => i.compra);
+  const puesta = suma(por, i => i.puesta), operacion = suma(por, i => i.operacion);
+  return { compra, puesta, operacion, total: compra + puesta + operacion,
+    pctGastoSobreCompra: compra ? ((suma(compras, i => i.puesta + i.operacion)) / compra) * 100 : null };
+}
+
+// ---- Ritmo de uso: km por día ----
+// Entre el punto de referencia y la última lectura de km. La referencia es el último registro con ≥ 90 días de antigüedad
+// respecto a esa lectura (así el ritmo se actualiza con el uso reciente); si no existe, el km inicial del vehículo.
+// Sin al menos 14 días de datos o sin km recorridos no se estima nada (no se inventa).
+export function ritmoUso(datos, vehiculoId, hoy) {
+  const v = vehiculoPorId(datos, vehiculoId);
+  const registros = v ? registrosKm(datos, vehiculoId).sort(porFechaKm) : [];
+  if (!registros.length) return null;
+  const ultimo = registros[registros.length - 1];
+  const previos = registros.filter(r => r.fecha <= sumarDias(ultimo.fecha, -90));
+  const ref = previos.length ? previos[previos.length - 1] : { fecha: inicioSeguimiento(datos, v, hoy), km: v.kmInicial ?? 0 };
+  const dias = diasEntre(ref.fecha, ultimo.fecha);
+  const km = ultimo.km - ref.km;
+  if (dias < 14 || km <= 0) return null;
+  return { kmPorDia: km / dias, kmAnual: (km / dias) * 365, dias };
 }
 
 // ---- Combustible ----
@@ -340,6 +396,7 @@ export function recordatorios(datos, hoy) {
   for (const v of activos) {
     const actual = kmActual(datos, v.id);
     const trabajos = vivos(datos.trabajos).filter(t => t.vehiculoId === v.id).sort(porFechaKm);
+    const ritmo = ritmoUso(datos, v.id, hoy);
 
     for (const p of v.programados ?? []) {
       if (!p.intervaloKm && !p.intervaloMeses) continue;
@@ -356,7 +413,15 @@ export function recordatorios(datos, hoy) {
       let estado = 'ok';
       if (kmRestantes !== null) estado = peor(estado, kmRestantes <= 0 ? 'vencido' : kmRestantes <= UMBRAL_PROXIMO_KM ? 'proximo' : 'ok');
       if (diasRestantes !== null) estado = peor(estado, diasRestantes <= 0 ? 'vencido' : diasRestantes <= UMBRAL_PROXIMO_DIAS ? 'proximo' : 'ok');
-      servicios.push({ ...base, estado, ultimoKm: ultimo.km, ultimaFecha: ultimo.fecha, proximoKm, proximaFecha, kmRestantes, diasRestantes });
+      // Fecha estimada: la más cercana entre el plazo en meses y los días que tardarán en recorrerse los km restantes (a tu ritmo real).
+      let fechaEstimada = null, limite = null;
+      if (estado === 'ok' || estado === 'proximo') {
+        const porKm = kmRestantes !== null && ritmo ? sumarDias(hoy, Math.ceil(kmRestantes / ritmo.kmPorDia)) : null;
+        if (porKm && proximaFecha) { fechaEstimada = porKm < proximaFecha ? porKm : proximaFecha; limite = porKm < proximaFecha ? 'km' : 'meses'; }
+        else if (porKm) { fechaEstimada = porKm; limite = 'km'; }
+        else if (proximaFecha) { fechaEstimada = proximaFecha; limite = 'meses'; }
+      }
+      servicios.push({ ...base, estado, ultimoKm: ultimo.km, ultimaFecha: ultimo.fecha, proximoKm, proximaFecha, kmRestantes, diasRestantes, fechaEstimada, limite });
     }
 
     // Seguros/documentos: solo el vigente más reciente de cada tipo (una renovación reemplaza al vencido anterior).
