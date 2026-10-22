@@ -75,13 +75,13 @@ function formulario(vista, item) {
     <section class="programados">
       <h2>Historial de precios</h2>
       ${compras.length > 1 ? `<div class="grafico" style="height:200px"><canvas id="g-precios" role="img" aria-label="Precio unitario en el tiempo"></canvas></div>
-      ${tabla(['Fecha', 'Vehículo', 'Proveedor', 'Precio'], compras.map(c => [formatoFecha(c.fecha), lista('vehiculos').find(x => x.id === c.vehiculoId)?.alias ?? '—', c.proveedor, formatoUSD(c.precioUnit)]))}` : ''}
+      ${tabla(['Fecha', 'Vehículo', 'Precio'], compras.map(c => [formatoFecha(c.fecha), lista('vehiculos').find(x => x.id === c.vehiculoId)?.alias ?? '—', formatoUSD(c.precioUnit)]))}` : ''}
       ${compras.length ? `<div class="pila">${compras.map(c => {
         const v = lista('vehiculos').find(x => x.id === c.vehiculoId);
         return `
         <div class="tarjeta compra ${c.masBarato ? 'barato' : ''}" style="--c:${colorSeguro(v?.color)}">
           <span class="vehiculo-punto" aria-hidden="true"></span>
-          <span class="vehiculo-datos"><b>${esc(formatoFecha(c.fecha))}</b><small>${esc(v?.alias ?? '—')}${c.proveedor ? ' · ' + esc(c.proveedor) : ''}</small></span>
+          <span class="vehiculo-datos"><b>${esc(formatoFecha(c.fecha))}</b><small>${esc(v?.alias ?? '—')}</small></span>
           <span class="vehiculo-km">${esc(formatoUSD(c.precioUnit))}${c.cantidad !== 1 ? `<small>× ${esc(c.cantidad)}</small>` : ''}${c.masBarato ? '<small class="estado estado-ok"><span aria-hidden="true">★</span> Más barato</small>' : ''}</span>
         </div>`;
       }).join('')}</div>` : '<p class="apagado">Aún no hay compras registradas de este ítem.</p>'}
@@ -99,7 +99,7 @@ function formulario(vista, item) {
     const nombre = String(f.get('nombre')).trim();
     if (!nombre) return mostrarError('Escribe un nombre.');
     if (lista('items').some(i => i.id !== d.id && normalizar(i.nombre) === normalizar(nombre))) return mostrarError('Ya existe un ítem con ese nombre.');
-    guardar('items', { ultimoPrecio: null, ultimaFecha: null, ultimoProveedor: null, ...d, nombre, tipo: f.get('tipo'), categoria: f.get('categoria') });
+    guardar('items', { ultimoPrecio: null, ultimaFecha: null, ...d, nombre, tipo: f.get('tipo'), categoria: f.get('categoria') });
     toast(nuevo ? 'Ítem creado' : 'Cambios guardados');
     location.hash = '#/catalogo';
   });

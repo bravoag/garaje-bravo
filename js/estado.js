@@ -83,13 +83,13 @@ export function borrar(col, id) {
   cambio();
 }
 
-// Actualiza ultimoPrecio/ultimaFecha/ultimoProveedor de cada ítem tras guardar, editar o borrar un trabajo.
+// Actualiza ultimoPrecio/ultimaFecha de cada ítem tras guardar, editar o borrar un trabajo.
 export function recalcularItems(itemIds) {
   for (const id of new Set(itemIds)) {
     const item = datos.items.find(i => i.id === id);
     if (!item) continue;
-    const u = recalcularUltimo(id, datos.trabajos) ?? { ultimoPrecio: null, ultimaFecha: null, ultimoProveedor: null };
-    if (item.ultimoPrecio !== u.ultimoPrecio || item.ultimaFecha !== u.ultimaFecha || item.ultimoProveedor !== u.ultimoProveedor) {
+    const u = recalcularUltimo(id, datos.trabajos) ?? { ultimoPrecio: null, ultimaFecha: null };
+    if (item.ultimoPrecio !== u.ultimoPrecio || item.ultimaFecha !== u.ultimaFecha) {
       guardar('items', { ...item, ...u });
     }
   }

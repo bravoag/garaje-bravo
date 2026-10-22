@@ -2,7 +2,7 @@
 // Rutas: #/analisis (Global) y #/analisis/<vehiculoId>
 import { datos, lista } from '../estado.js';
 import { esc, hoyISO, formatoUSD, formatoKm, formatoNumero } from '../util.js';
-import { kpisGlobal, kpisVehiculo, periodoPreset, gastoPorProveedor } from '../calc.js';
+import { kpisGlobal, kpisVehiculo, periodoPreset } from '../calc.js';
 import { colorSeguro } from './componentes.js';
 import { CATEGORICOS, COLOR_OTROS, limpiarGraficos, cargarChart, barrasApiladas, dona, lineas, mesesContinuos, etiquetaMes, tabla } from './graficos.js';
 
@@ -168,7 +168,6 @@ function pestanaGasto(contenido, { k, v, vehiculoId, vehiculos, periodo, incluir
   const totalCat = partes.reduce((s, p) => s + p.valor, 0);
 
   const maxItem = k.topItems[0]?.gasto ?? 0;
-  const proveedores = incluir.mantenimiento ? gastoPorProveedor(datos, vehiculoId, periodo) : [];
 
   if (!hayDatos) { contenido.innerHTML = '<section class="tarjeta vacio"><h2>Sin gastos en este período</h2><p>Registra trabajos o combustible, o cambia el período.</p><a class="btn btn-primario" href="#/registrar">Registrar</a></section>'; return; }
 
@@ -190,13 +189,6 @@ function pestanaGasto(contenido, { k, v, vehiculoId, vehiculos, periodo, incluir
       <div class="ranking">${k.topItems.map(i => `<div class="rank-fila" style="--c:${CATEGORICOS[0]}">
         <span class="rank-nombre">${esc(i.nombre)}</span><span class="rank-valor">${esc(formatoUSD(i.gasto))}</span>
         <span class="rank-barra"><i style="width:${maxItem ? (i.gasto / maxItem) * 100 : 0}%"></i></span></div>`).join('')}</div>
-    </section>` : ''}
-    ${proveedores.length > 1 ? `<section class="tarjeta">
-      <h2>Por proveedor</h2>
-      ${tabla(['Proveedor', 'Trabajos', 'Gasto'], proveedores.map(p => [p.proveedor, String(p.trabajos), formatoUSD(p.gasto)]))}
-      <div class="ranking">${proveedores.slice(0, 5).map(p => `<div class="rank-fila" style="--c:${CATEGORICOS[0]}">
-        <span class="rank-nombre">${esc(p.proveedor)} <small class="apagado">(${p.trabajos})</small></span><span class="rank-valor">${esc(formatoUSD(p.gasto))}</span>
-        <span class="rank-barra"><i style="width:${(p.gasto / proveedores[0].gasto) * 100}%"></i></span></div>`).join('')}</div>
     </section>` : ''}`;
 
   cargarChart().then(() => {

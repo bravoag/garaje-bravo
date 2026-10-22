@@ -71,7 +71,6 @@ export function formularioTrabajo(vista, existente) {
   const id = existente?.id ?? nuevoId();
   const lineas = (existente?.lineas ?? []).map(l => ({ ...l }));
   const vehiculoInicial = existente?.vehiculoId ?? vehiculoPorDefecto(vehiculos);
-  const proveedores = [...new Set(lista('trabajos').map(t => t.proveedor).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
   let fotoNueva = null;
   let quitarFoto = false;
 
@@ -95,10 +94,6 @@ export function formularioTrabajo(vista, existente) {
           <label class="chip"><input type="radio" name="tipoMtto" value="correctivo" ${existente?.tipoMtto === 'correctivo' ? 'checked' : ''}><span>Correctivo</span></label>
         </div>
       </fieldset>
-      <label class="campo">Proveedor (taller o tienda)
-        <input class="entrada" name="proveedor" list="lista-proveedores" autocomplete="off" value="${esc(existente?.proveedor ?? '')}">
-        <datalist id="lista-proveedores">${proveedores.map(p => `<option value="${esc(p)}">`).join('')}</datalist>
-      </label>
 
       <section class="programados">
         <h2>Ítems</h2>
@@ -164,7 +159,7 @@ export function formularioTrabajo(vista, existente) {
       const l = lineas[Number(el.dataset.i)];
       const u = ultimoDe(l.itemId);
       el.querySelector('[data-ultima]').textContent = u
-        ? `Última vez: ${formatoUSD(u.ultimoPrecio)} el ${formatoFecha(u.ultimaFecha)}${u.ultimoProveedor ? ' en ' + u.ultimoProveedor : ''}`
+        ? `Última vez: ${formatoUSD(u.ultimoPrecio)} el ${formatoFecha(u.ultimaFecha)}`
         : 'Primera vez que registras este ítem.';
       const pct = u && Number.isFinite(l.precioUnit) ? precioAnomalo(l.precioUnit, u.ultimoPrecio, umbral) : null;
       el.querySelector('[data-aviso]').textContent = pct === null ? '' : `▲ ${pct > 0 ? '+' : ''}${pct} % vs última compra`;
@@ -246,7 +241,7 @@ export function formularioTrabajo(vista, existente) {
     guardar('trabajos', {
       ...existente, id,
       vehiculoId: f.get('vehiculoId'), fecha, km,
-      proveedor: String(f.get('proveedor')).trim(), tipoMtto: f.get('tipoMtto'),
+      tipoMtto: f.get('tipoMtto'),
       lineas: limpias, total: totalTrabajo(limpias),
       foto: fotoNueva ? `fotos/${id}.jpg` : quitarFoto ? null : (existente?.foto ?? null),
       notas: String(f.get('notas')).trim(),

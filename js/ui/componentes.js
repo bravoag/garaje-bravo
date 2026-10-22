@@ -100,7 +100,7 @@ export function selectorItem({ alElegir }) {
       if (!nom) { error.textContent = 'Escribe un nombre.'; error.hidden = false; return; }
       const existente = lista('items', { incluirBorrados: false }).find(i => normalizar(i.nombre) === normalizar(nom));
       if (existente) { error.textContent = 'Ya existe un ítem con ese nombre.'; error.hidden = false; return; }
-      const item = guardar('items', { nombre: nom, tipo: f.get('tipo'), categoria: f.get('categoria'), ultimoPrecio: null, ultimaFecha: null, ultimoProveedor: null, activo: true });
+      const item = guardar('items', { nombre: nom, tipo: f.get('tipo'), categoria: f.get('categoria'), ultimoPrecio: null, ultimaFecha: null, activo: true });
       elegir(item);
     });
     form.nombre.focus();

@@ -39,7 +39,7 @@ export function render(vista, param) {
           <label class="campo">Desde<input class="entrada" type="date" name="desde" value="${esc(filtro.desde)}"></label>
           <label class="campo">Hasta<input class="entrada" type="date" name="hasta" value="${esc(filtro.hasta)}"></label>
         </div>
-        <label class="campo">Buscar ítem o proveedor<input class="entrada" type="search" name="texto" value="${esc(filtro.texto)}" autocomplete="off"></label>
+        <label class="campo">Buscar ítem o notas<input class="entrada" type="search" name="texto" value="${esc(filtro.texto)}" autocomplete="off"></label>
       </div>
     </details>
     <div class="pila" id="filas"></div>
@@ -115,7 +115,6 @@ function detalle(tipo, id, alCambiar) {
         <dt>Fecha</dt><dd>${esc(formatoFecha(r.fecha))}</dd>
         <dt>Km</dt><dd>${esc(formatoKm(r.km))}</dd>
         <dt>Tipo</dt><dd class="cap">${esc(r.tipoMtto)}</dd>
-        ${r.proveedor ? `<dt>Proveedor</dt><dd>${esc(r.proveedor)}</dd>` : ''}
       </dl>
       <div class="pila">${r.lineas.map(l => `
         <div class="tarjeta compra"><span class="vehiculo-datos"><b>${esc(nombreItem(l.itemId))}</b>

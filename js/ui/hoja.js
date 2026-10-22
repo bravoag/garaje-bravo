@@ -27,13 +27,13 @@ export function render(vista, param) {
   let filas = '';
   h.historial.forEach((t, i) => {
     filas += `<tr>
-      <td>${esc(formatoFecha(t.fecha))}</td><td class="num">${esc(formatoKm(t.km))}</td><td>${esc(cap(t.tipoMtto))}</td><td>${esc(t.proveedor)}</td>
+      <td>${esc(formatoFecha(t.fecha))}</td><td class="num">${esc(formatoKm(t.km))}</td><td>${esc(cap(t.tipoMtto))}</td>
       <td>${t.lineas.map(l => `${esc(formatoNumero(l.cantidad, Number.isInteger(l.cantidad) ? 0 : 2))} × ${esc(l.nombre)} <span class="gris">(${esc(formatoUSD(l.precioUnit))})</span>`).join('<br>')}</td>
       <td class="num">${esc(formatoUSD(t.total))}</td></tr>`;
     const sigue = h.historial[i + 1];
     if (!sigue || sigue.fecha.slice(0, 4) !== t.fecha.slice(0, 4)) {
       const anio = t.fecha.slice(0, 4);
-      filas += `<tr class="subtotal"><td colspan="5">Subtotal ${esc(anio)}</td><td class="num">${esc(formatoUSD(h.subtotalesAnio.find(s => s.anio === anio).total))}</td></tr>`;
+      filas += `<tr class="subtotal"><td colspan="4">Subtotal ${esc(anio)}</td><td class="num">${esc(formatoUSD(h.subtotalesAnio.find(s => s.anio === anio).total))}</td></tr>`;
     }
   });
 
@@ -78,14 +78,14 @@ export function render(vista, param) {
       <section>
         <h2>Historial de mantenimiento</h2>
         ${h.historial.length ? `<table class="hv-tabla">
-          <thead><tr><th>Fecha</th><th>Km</th><th>Tipo</th><th>Proveedor</th><th>Ítems</th><th>Total</th></tr></thead>
+          <thead><tr><th>Fecha</th><th>Km</th><th>Tipo</th><th>Ítems</th><th>Total</th></tr></thead>
           <tbody>${filas}</tbody></table>` : '<p class="gris">Sin trabajos en el período elegido.</p>'}
       </section>
 
       ${h.garantias.length ? `<section>
         <h2>Garantías vigentes</h2>
-        <table class="hv-tabla"><thead><tr><th>Ítem</th><th>Instalado</th><th>Proveedor</th><th>Garantía hasta</th></tr></thead>
-        <tbody>${h.garantias.map(g => `<tr><td>${esc(g.nombre)}</td><td>${esc(formatoFecha(g.fecha))}</td><td>${esc(g.proveedor)}</td><td>${esc(formatoFecha(g.garantiaHasta))}</td></tr>`).join('')}</tbody></table>
+        <table class="hv-tabla"><thead><tr><th>Ítem</th><th>Instalado</th><th>Garantía hasta</th></tr></thead>
+        <tbody>${h.garantias.map(g => `<tr><td>${esc(g.nombre)}</td><td>${esc(formatoFecha(g.fecha))}</td><td>${esc(formatoFecha(g.garantiaHasta))}</td></tr>`).join('')}</tbody></table>
       </section>` : ''}
 
       ${h.proximos.length ? `<section>

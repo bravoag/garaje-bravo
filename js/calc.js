@@ -45,7 +45,7 @@ export function recalcularUltimo(itemId, trabajos) {
   }
   if (!mejor) return null;
   const linea = [...mejor.lineas].reverse().find(l => l.itemId === itemId);
-  return { ultimoPrecio: linea.precioUnit, ultimaFecha: mejor.fecha, ultimoProveedor: mejor.proveedor ?? '' };
+  return { ultimoPrecio: linea.precioUnit, ultimaFecha: mejor.fecha };
 }
 
 // Todas las compras de un ítem (más reciente primero). Marca la(s) más barata(s) si hay más de una compra.
@@ -54,7 +54,7 @@ export function historialPrecios(datos, itemId) {
   for (const t of vivos(datos.trabajos)) {
     for (const l of t.lineas ?? []) {
       if (l.itemId !== itemId) continue;
-      compras.push({ trabajoId: t.id, fecha: t.fecha, km: t.km, proveedor: t.proveedor ?? '', vehiculoId: t.vehiculoId, cantidad: l.cantidad, precioUnit: l.precioUnit });
+      compras.push({ trabajoId: t.id, fecha: t.fecha, km: t.km, vehiculoId: t.vehiculoId, cantidad: l.cantidad, precioUnit: l.precioUnit });
     }
   }
   compras.sort((a, b) => porFechaKm(b, a));
@@ -73,7 +73,7 @@ export function registrosUnificados(datos, filtros = {}) {
     for (const t of vivos(datos.trabajos)) {
       const nombres = (t.lineas ?? []).map(l => nombreItem(l.itemId));
       filas.push({ tipo: 'trabajo', id: t.id, fecha: t.fecha, km: t.km, vehiculoId: t.vehiculoId, monto: t.total,
-        titulo: nombres.join(', '), detalle: [t.tipoMtto, t.proveedor].filter(Boolean).join(' · '), busqueda: [...nombres, t.proveedor, t.notas] });
+        titulo: nombres.join(', '), detalle: t.tipoMtto ?? '', busqueda: [...nombres, t.notas] });
     }
   }
   if (tipos.combustible) {
@@ -252,21 +252,6 @@ export function kpisGlobal(datos, periodo, incluir, hoy) {
   };
 }
 
-// ---- Proveedores: gasto de mantenimiento por taller/tienda en el período ----
-export function gastoPorProveedor(datos, vehiculoId, periodo) {
-  const grupos = new Map();
-  for (const t of vivos(datos.trabajos)) {
-    if ((vehiculoId && t.vehiculoId !== vehiculoId) || !enPeriodo(t.fecha, periodo)) continue;
-    const nombre = (t.proveedor ?? '').trim() || 'Sin proveedor';
-    const clave = normalizar(nombre);
-    const g = grupos.get(clave) ?? { proveedor: nombre, gasto: 0, trabajos: 0 };
-    g.gasto += t.total;
-    g.trabajos += 1;
-    grupos.set(clave, g);
-  }
-  return [...grupos.values()].map(g => ({ ...g, gasto: redondear2(g.gasto) })).sort((a, b) => b.gasto - a.gasto);
-}
-
 // ---- Combustible ----
 // `registros`: llenados de UN vehículo. km/L por llenado completo: (km − kmLlenoAnterior) / Σ litros desde el lleno
 // anterior (exclusive) hasta este (inclusive). Sin lleno de referencia → null.
@@ -399,7 +384,7 @@ export function hojaDeVida(datos, vehiculoId, periodo, hoy) {
   const trabajos = todos.filter(t => enPeriodo(t.fecha, periodo));
 
   const historial = trabajos.map(t => ({
-    id: t.id, fecha: t.fecha, km: t.km, tipoMtto: t.tipoMtto, proveedor: t.proveedor ?? '', total: t.total,
+    id: t.id, fecha: t.fecha, km: t.km, tipoMtto: t.tipoMtto, total: t.total,
     lineas: (t.lineas ?? []).map(l => ({ nombre: nombreItem(l.itemId), cantidad: l.cantidad, precioUnit: l.precioUnit, subtotal: redondear2(l.cantidad * l.precioUnit) })),
   }));
   const porAnio = {};
@@ -409,7 +394,7 @@ export function hojaDeVida(datos, vehiculoId, periodo, hoy) {
   const garantias = [];
   for (const t of todos) {
     for (const l of t.lineas ?? []) {
-      if (l.garantiaHasta && l.garantiaHasta >= hoy) garantias.push({ nombre: nombreItem(l.itemId), fecha: t.fecha, garantiaHasta: l.garantiaHasta, proveedor: t.proveedor ?? '' });
+      if (l.garantiaHasta && l.garantiaHasta >= hoy) garantias.push({ nombre: nombreItem(l.itemId), fecha: t.fecha, garantiaHasta: l.garantiaHasta });
     }
   }
   garantias.sort((a, b) => (a.garantiaHasta < b.garantiaHasta ? -1 : 1));

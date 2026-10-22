@@ -8,7 +8,7 @@ const cap = t => (t ? t.charAt(0).toUpperCase() + t.slice(1) : '');
 const fecha = iso => (iso ? parseFecha(iso) : null);                 // Date local → celda de fecha real en Excel
 const porFecha = (a, b) => (a['Fecha'] ?? a['Desde']) - (b['Fecha'] ?? b['Desde']);
 
-export const COLUMNAS_SERVICIOS = ['ID trabajo', 'Fecha', 'Vehículo', 'Marca', 'Modelo', 'Placa', 'Km', 'Tipo de mantenimiento', 'Proveedor', 'Ítem', 'Tipo de ítem', 'Categoría', 'Cantidad', 'Precio unitario (USD)', 'Subtotal línea (USD)', 'Total del trabajo (USD)', 'Garantía hasta', 'Tiene foto', 'Notas'];
+export const COLUMNAS_SERVICIOS = ['ID trabajo', 'Fecha', 'Vehículo', 'Marca', 'Modelo', 'Placa', 'Km', 'Tipo de mantenimiento', 'Ítem', 'Tipo de ítem', 'Categoría', 'Cantidad', 'Precio unitario (USD)', 'Subtotal línea (USD)', 'Total del trabajo (USD)', 'Garantía hasta', 'Tiene foto', 'Notas'];
 export const COLUMNAS_COMBUSTIBLE = ['ID', 'Fecha', 'Vehículo', 'Placa', 'Km', 'Litros', 'Precio por litro (USD)', 'Total (USD)', 'Tanque lleno', 'Estación', 'Notas'];
 export const COLUMNAS_SEGUROS = ['ID', 'Vehículo', 'Placa', 'Tipo', 'Entidad', 'Póliza', 'Desde', 'Vence', 'Monto (USD)', 'Notas'];
 
@@ -24,7 +24,7 @@ export function filasServicios(d) {
       const item = (d.items ?? []).find(i => i.id === l.itemId) ?? {};
       filas.push({
         'ID trabajo': t.id, 'Fecha': fecha(t.fecha), 'Vehículo': v.alias ?? '', 'Marca': v.marca ?? '', 'Modelo': v.modelo ?? '', 'Placa': v.placa ?? '',
-        'Km': t.km, 'Tipo de mantenimiento': cap(t.tipoMtto), 'Proveedor': t.proveedor ?? '',
+        'Km': t.km, 'Tipo de mantenimiento': cap(t.tipoMtto),
         'Ítem': item.nombre ?? 'Ítem eliminado', 'Tipo de ítem': cap(item.tipo), 'Categoría': item.categoria ?? '',
         'Cantidad': l.cantidad, 'Precio unitario (USD)': l.precioUnit, 'Subtotal línea (USD)': Math.round(l.cantidad * l.precioUnit * 100) / 100,
         'Total del trabajo (USD)': t.total, 'Garantía hasta': fecha(l.garantiaHasta), 'Tiene foto': t.foto ? 'Sí' : 'No', 'Notas': t.notas ?? '',
