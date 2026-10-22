@@ -12,6 +12,8 @@ export const COLUMNAS_SERVICIOS = ['ID trabajo', 'Fecha', 'Vehículo', 'Marca', 
 export const COLUMNAS_COMBUSTIBLE = ['ID', 'Fecha', 'Vehículo', 'Placa', 'Km', 'Litros', 'Precio por litro (USD)', 'Total (USD)', 'Tanque lleno', 'Estación', 'Notas'];
 export const COLUMNAS_SEGUROS = ['ID', 'Vehículo', 'Placa', 'Tipo', 'Entidad', 'Póliza', 'Desde', 'Vence', 'Monto (USD)', 'Notas'];
 
+export const COLUMNAS_KM = ['ID', 'Fecha', 'Vehículo', 'Placa', 'Km', 'Notas'];
+
 // Los vehículos se buscan entre TODOS (también vendidos): el historial no pierde el nombre.
 const vehiculoDe = (d, id) => (d.vehiculos ?? []).find(v => v.id === id) ?? {};
 
@@ -51,6 +53,13 @@ export function filasSeguros(d) {
       'ID': s.id, 'Vehículo': v.alias ?? '', 'Placa': v.placa ?? '', 'Tipo': cap(s.tipo), 'Entidad': s.entidad ?? '', 'Póliza': s.poliza ?? '',
       'Desde': fecha(s.desde), 'Vence': fecha(s.vence), 'Monto (USD)': s.monto, 'Notas': s.notas ?? '',
     };
+  }).sort(porFecha);
+}
+
+export function filasKm(d) {
+  return vivos(d.kms).map(k => {
+    const v = vehiculoDe(d, k.vehiculoId);
+    return { 'ID': k.id, 'Fecha': fecha(k.fecha), 'Vehículo': v.alias ?? '', 'Placa': v.placa ?? '', 'Km': k.km, 'Notas': k.notas ?? '' };
   }).sort(porFecha);
 }
 
@@ -122,13 +131,14 @@ function hojaExcel(XLSX, wb, nombre, filas, columnas) {
 
 // Excel con 3 hojas planas. Si SheetJS no carga, descarga CSV (uno por hoja). Devuelve 'xlsx' o 'csv'.
 export async function exportarExcel() {
-  const servicios = filasServicios(datos), combustible = filasCombustible(datos), seguros = filasSeguros(datos);
+  const servicios = filasServicios(datos), combustible = filasCombustible(datos), seguros = filasSeguros(datos), kms = filasKm(datos);
   try {
     const XLSX = await cargarXLSX();
     const wb = XLSX.utils.book_new();
     hojaExcel(XLSX, wb, 'Servicios', servicios, COLUMNAS_SERVICIOS);
     hojaExcel(XLSX, wb, 'Combustible', combustible, COLUMNAS_COMBUSTIBLE);
     if (seguros.length) hojaExcel(XLSX, wb, 'Seguros', seguros, COLUMNAS_SEGUROS);
+    if (kms.length) hojaExcel(XLSX, wb, 'Kilometraje', kms, COLUMNAS_KM);
     XLSX.writeFile(wb, `garaje-${hoyISO()}.xlsx`, { cellDates: true });
     return 'xlsx';
   } catch {
@@ -137,6 +147,7 @@ export async function exportarExcel() {
     csv('servicios', servicios, COLUMNAS_SERVICIOS);
     setTimeout(() => csv('combustible', combustible, COLUMNAS_COMBUSTIBLE), 400);
     if (seguros.length) setTimeout(() => csv('seguros', seguros, COLUMNAS_SEGUROS), 800);
+    if (kms.length) setTimeout(() => csv('kilometraje', kms, COLUMNAS_KM), 1200);
     return 'csv';
   }
 }

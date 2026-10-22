@@ -42,10 +42,10 @@ export function render(vista) {
   ];
 
   const km = rec.kmDesactualizado.map(k => `
-    <a class="tarjeta recordatorio estado-borde-proximo" href="#/registrar/combustible">
+    <a class="tarjeta recordatorio estado-borde-proximo" href="#/registrar/km">
       <span class="recordatorio-cab">${punto(k.vehiculoId)}<b>Actualiza el km de ${esc(veh(k.vehiculoId)?.alias ?? '—')}</b></span>
       <span class="estado estado-proximo"><span aria-hidden="true">●</span> Km desactualizado</span>
-      <small class="apagado">Último registro hace ${plural(k.dias, 'día', 'días')} (${esc(formatoFecha(k.ultimaFecha))}). Registra un llenado o un trabajo para ponerlo al día.</small>
+      <small class="apagado">Último registro hace ${plural(k.dias, 'día', 'días')} (${esc(formatoFecha(k.ultimaFecha))}). Toca para actualizar el kilometraje.</small>
     </a>`).join('');
 
   const secciones = SECCIONES.map(([estado, titulo]) => {
@@ -61,7 +61,7 @@ export function render(vista) {
 
   const hay = km || secciones;
   vista.innerHTML = `
-    <header class="cabecera"><span class="etiqueta">Servicios y documentos</span><h1>Avisos</h1></header>
+    <header class="cabecera"><a class="volver" href="#/mas">‹ Más</a><h1>Avisos</h1></header>
     ${km ? `<section class="seccion-aviso"><h2>Km desactualizado</h2><div class="pila">${km}</div></section>` : ''}
     ${secciones}
     ${hay ? '' : `<section class="tarjeta vacio">

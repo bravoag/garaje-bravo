@@ -18,15 +18,15 @@ import { toast } from './ui/componentes.js';
 
 const rutas = { inicio, analisis, registrar, recordatorios, mas, historico, vehiculos, catalogo, ajustes, hoja };
 // Subpantallas de Más resaltan "Más" en la nav.
-const grupoNav = { historico: 'mas', vehiculos: 'mas', catalogo: 'mas', ajustes: 'mas', hoja: 'mas' };
+const grupoNav = { recordatorios: 'mas', vehiculos: 'mas', catalogo: 'mas', ajustes: 'mas', hoja: 'mas' };
 
-// Contador de avisos pendientes en el icono de la nav (vencidos + próximos + km desactualizado).
+// Contador de avisos pendientes en el icono de Más (los avisos viven dentro de Más) (vencidos + próximos + km desactualizado).
 function actualizarBadge() {
   const n = calcularRecordatorios(datos, hoyISO()).pendientes;
   const badge = document.getElementById('badge');
   badge.hidden = n === 0;
   badge.textContent = n > 99 ? '99+' : String(n);
-  document.querySelector('[data-ruta="recordatorios"]').setAttribute('aria-label', n ? `Avisos, ${n} pendientes` : 'Avisos');
+  document.querySelector('[data-ruta="mas"]').setAttribute('aria-label', n ? `Más, ${n} avisos pendientes` : 'Más');
 }
 
 function navegar() {

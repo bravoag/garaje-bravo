@@ -110,6 +110,9 @@ a { color: var(--accion); }
   box-shadow: 0 0 0 5px var(--fondo), var(--glow), 0 0 28px color-mix(in srgb, var(--accion) 35%, transparent);
 }
 .nav-mas svg { width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; }
+.lista a .contador { margin-left: var(--e2); min-width: 22px; padding: 0 7px; border-radius: 999px; background: var(--vencido); color: #05060a; font: 800 13px/22px var(--fuente); text-align: center; }
+.lista a { gap: var(--e2); }
+.lista a::after { margin-left: auto; }
 .badge {
   position: absolute; top: 6px; left: calc(50% + 6px); min-width: 18px; height: 18px; padding: 0 5px;
   border-radius: 999px; background: var(--vencido); color: #05060a; font: 800 12px/18px var(--fuente); text-align: center;   /* texto oscuro: 5,9:1 (el blanco daba 3,5:1) */

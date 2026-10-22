@@ -1,12 +1,17 @@
 // ui/catalogo.js — catálogo de ítems: lista con buscador, edición, archivado e historial de precios.
-// Rutas: #/catalogo, #/catalogo/nuevo, #/catalogo/<id>
-import { datos, lista, obtener, guardar, borrar } from '../estado.js';
+// Rutas: #/catalogo, #/catalogo/nuevo, #/catalogo/<id>, #/catalogo/categorias, #/catalogo/categorias/nueva, #/catalogo/categorias/<id>
+import { datos, lista, obtener, guardar, borrar, nombresCategorias, categoriaExiste, itemsDeCategoria, renombrarCategoria, eliminarCategoria } from '../estado.js';
 import { esc, formatoUSD, formatoFecha } from '../util.js';
 import { historialPrecios } from '../calc.js';
-import { CATEGORIAS, colorSeguro, normalizar, toast } from './componentes.js';
+import { colorSeguro, normalizar, toast } from './componentes.js';
 import { cargarChart, lineas, tabla } from './graficos.js';
 
+// La categoría elegida en el filtro sobrevive mientras la app está abierta (sirve para reclasificar varios seguidos).
+let filtroCategoria = '';
+
 export function render(vista, param) {
+  if (param === 'categorias') return listaCategorias(vista);
+  if (param?.startsWith('categorias/')) return formularioCategoria(vista, param.slice('categorias/'.length));
   if (param === 'nuevo') return formulario(vista, null);
   if (param) {
     const item = obtener('items', param);
@@ -21,18 +26,23 @@ function listado(vista) {
     <header class="cabecera"><span class="etiqueta">Repuestos y servicios</span><h1>Catálogo</h1></header>
     ${items.length ? `
       <input type="search" class="entrada" id="buscar" placeholder="Buscar ítem…" aria-label="Buscar ítem" autocomplete="off">
+      <select class="entrada" id="filtro-categoria" aria-label="Filtrar por categoría">
+        <option value="">Todas las categorías</option>
+        ${nombresCategorias().map(c => `<option ${c === filtroCategoria ? 'selected' : ''}>${esc(c)}</option>`).join('')}
+      </select>
       <div class="opciones" id="filas"></div>` : `
       <section class="tarjeta vacio">
         <h2>El catálogo está vacío</h2>
         <p>Los ítems se crean al vuelo cuando registras un trabajo, o aquí mismo.</p>
       </section>`}
-    <p><a class="btn btn-primario" href="#/catalogo/nuevo">+ Nuevo ítem</a></p>`;
+    <p><a class="btn btn-primario" href="#/catalogo/nuevo">+ Nuevo ítem</a></p>
+    <p><a class="btn" href="#/catalogo/categorias">Categorías</a></p>`;
   if (!items.length) return;
 
   const filas = vista.querySelector('#filas');
   const pintar = () => {
     const t = normalizar(vista.querySelector('#buscar').value);
-    const visibles = items.filter(i => !t || normalizar(i.nombre).includes(t));
+    const visibles = items.filter(i => (!t || normalizar(i.nombre).includes(t)) && (!filtroCategoria || i.categoria === filtroCategoria));
     // Activos primero, archivados al final.
     visibles.sort((a, b) => (a.activo === false) - (b.activo === false));
     filas.innerHTML = visibles.map(i => `
@@ -42,12 +52,71 @@ function listado(vista) {
       </a>`).join('') || '<p class="apagado">Sin coincidencias.</p>';
   };
   vista.querySelector('#buscar').addEventListener('input', pintar);
+  vista.querySelector('#filtro-categoria').addEventListener('change', e => { filtroCategoria = e.target.value; pintar(); });
   pintar();
+}
+
+// ---------- Categorías ----------
+function listaCategorias(vista) {
+  const nombres = nombresCategorias();
+  vista.innerHTML = `
+    <header class="cabecera"><a class="volver" href="#/catalogo">‹ Catálogo</a><h1>Categorías</h1></header>
+    <div class="opciones">${nombres.map(n => {
+      const cat = lista('categorias').find(c => c.nombre === n);
+      const cuantos = itemsDeCategoria(n).length;
+      return `<a class="opcion" href="#/catalogo/categorias/${esc(cat.id)}"><span><b>${esc(n)}</b><small>${cuantos} ${cuantos === 1 ? 'ítem' : 'ítems'}</small></span><span class="apagado">›</span></a>`;
+    }).join('')}</div>
+    <p><a class="btn btn-primario" href="#/catalogo/categorias/nueva">+ Nueva categoría</a></p>`;
+}
+
+function formularioCategoria(vista, id) {
+  const nueva = id === 'nueva';
+  const cat = nueva ? null : obtener('categorias', id);
+  if (!nueva && !cat) return listaCategorias(vista);
+  const cuantos = cat ? itemsDeCategoria(cat.nombre).length : 0;
+  const otras = nombresCategorias().filter(n => n !== cat?.nombre);
+
+  vista.innerHTML = `
+    <header class="cabecera"><a class="volver" href="#/catalogo/categorias">‹ Categorías</a><h1>${nueva ? 'Nueva categoría' : esc(cat.nombre)}</h1></header>
+    <form class="formulario" novalidate>
+      <label class="campo">Nombre<input class="entrada" name="nombre" value="${esc(cat?.nombre ?? '')}" required autocomplete="off"></label>
+      <p class="error" role="alert" hidden></p>
+      <button class="btn btn-primario ancho" type="submit">${nueva ? 'Crear categoría' : 'Guardar nombre'}</button>
+    </form>
+    ${nueva ? '' : `<section class="programados formulario">
+      <h2>Eliminar categoría</h2>
+      ${otras.length ? `<p class="ayuda">${cuantos ? `Tiene ${cuantos} ${cuantos === 1 ? 'ítem' : 'ítems'}: se moverán a la categoría que elijas.` : 'No tiene ítems.'}</p>
+        ${cuantos ? `<label class="campo">Mover sus ítems a
+          <select class="entrada" id="destino">${otras.map(n => `<option>${esc(n)}</option>`).join('')}</select></label>` : ''}
+        <button class="btn ancho peligro" type="button" id="eliminar-cat">Eliminar categoría</button>` : '<p class="ayuda">Es la única categoría: crea otra antes de eliminarla.</p>'}
+    </section>`}`;
+
+  const form = vista.querySelector('form');
+  const errorEl = form.querySelector('.error');
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const nombre = String(new FormData(form).get('nombre')).trim();
+    if (!nombre) { errorEl.textContent = 'Escribe un nombre.'; errorEl.hidden = false; return; }
+    if (categoriaExiste(nombre, cat?.id)) { errorEl.textContent = 'Ya existe una categoría con ese nombre.'; errorEl.hidden = false; return; }
+    if (nueva) guardar('categorias', { nombre }); else renombrarCategoria(cat.id, nombre);
+    toast(nueva ? 'Categoría creada' : 'Categoría actualizada');
+    location.hash = '#/catalogo/categorias';
+  });
+  vista.querySelector('#eliminar-cat')?.addEventListener('click', () => {
+    const destino = vista.querySelector('#destino')?.value ?? otras[0];
+    if (!confirm(`¿Eliminar «${cat.nombre}»${cuantos ? ` y mover sus ${cuantos} ítems a «${destino}»` : ''}?`)) return;
+    eliminarCategoria(cat.id, destino);
+    toast('Categoría eliminada');
+    location.hash = '#/catalogo/categorias';
+  });
 }
 
 function formulario(vista, item) {
   const nuevo = !item;
   const d = item ?? { tipo: 'servicio', categoria: 'Otros', activo: true };
+  // Si el ítem tiene una categoría que ya no existe, igual se muestra para no perderla al guardar.
+  const categorias = nombresCategorias();
+  if (d.categoria && !categorias.includes(d.categoria)) categorias.push(d.categoria);
   const compras = nuevo ? [] : historialPrecios(datos, d.id);
   const programado = !nuevo && lista('vehiculos').some(v => v.programados?.some(p => p.itemId === d.id));
 
@@ -63,7 +132,7 @@ function formulario(vista, item) {
           <select class="entrada" name="tipo"><option value="repuesto" ${d.tipo === 'repuesto' ? 'selected' : ''}>Repuesto</option><option value="servicio" ${d.tipo === 'servicio' ? 'selected' : ''}>Servicio</option></select>
         </label>
         <label class="campo">Categoría
-          <select class="entrada" name="categoria">${CATEGORIAS.map(c => `<option ${c === d.categoria ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select>
+          <select class="entrada" name="categoria">${categorias.map(c => `<option ${c === d.categoria ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select>
         </label>
       </div>
       <p class="error" role="alert" hidden></p>

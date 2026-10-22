@@ -1,9 +1,8 @@
 // Componentes de UI compartidos: hoja inferior, selector de ítems con búsqueda, toast, chip de estado.
-import { lista, guardar } from '../estado.js';
+import { lista, guardar, nombresCategorias } from '../estado.js';
 import { esc, formatoUSD, normalizar } from '../util.js';
 
 export const COLORES = ['#00e5ff', '#ff2bd6', '#a855ff', '#3d7bff', '#ff8a00', '#ffe600', '#b6ff00'];
-export const CATEGORIAS = ['Motor', 'Frenos', 'Suspensión y dirección', 'Neumáticos', 'Eléctrico', 'Fluidos y filtros', 'Transmisión', 'Carrocería', 'Aire y clima', 'Otros'];
 
 // Solo colores de la paleta pasan a estilos en línea (evita inyectar CSS desde datos).
 export const colorSeguro = c => (COLORES.includes(c) ? c : COLORES[0]);
@@ -86,7 +85,7 @@ export function selectorItem({ alElegir }) {
           <select name="tipo" class="entrada"><option value="repuesto">Repuesto</option><option value="servicio">Servicio</option></select>
         </label>
         <label class="campo">Categoría
-          <select name="categoria" class="entrada">${CATEGORIAS.map(c => `<option>${esc(c)}</option>`).join('')}</select>
+          <select name="categoria" class="entrada">${nombresCategorias().map(c => `<option>${esc(c)}</option>`).join('')}</select>
         </label>
         <p class="error" role="alert" hidden></p>
         <button class="btn btn-primario" type="submit">Crear y elegir</button>

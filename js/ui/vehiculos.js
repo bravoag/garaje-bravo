@@ -79,6 +79,7 @@ function formulario(vista, v) {
         ${campo('kmInicial', 'Km actual (inicial)', 'required type="number" inputmode="numeric" min="0" step="1"')}
         ${campo('fechaAlta', 'Fecha de ese km', 'type="date"')}
       </div>
+      <p class="ayuda">Es la fecha en que el vehículo tenía ese km (si es el km de compra, la fecha de compra). Si cargas gastos de fechas anteriores, los indicadores igual los toman en cuenta.</p>
       <label class="campo">Combustible
         <select class="entrada" name="combustible"><option value="">—</option>
           ${COMBUSTIBLES.map(c => `<option ${c === d.combustible ? 'selected' : ''}>${c}</option>`).join('')}

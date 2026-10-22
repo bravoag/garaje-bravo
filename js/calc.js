@@ -62,10 +62,10 @@ export function historialPrecios(datos, itemId) {
   return compras.map(c => ({ ...c, masBarato: compras.length > 1 && c.precioUnit === minimo }));
 }
 
-// ---- Histórico unificado (trabajos + combustible + seguros) ----
+// ---- Histórico unificado (trabajos + combustible + seguros + lecturas de km) ----
 // filtros: { vehiculoId, tipos: {mantenimiento, combustible, seguros}, desde, hasta, texto }
 export function registrosUnificados(datos, filtros = {}) {
-  const { vehiculoId = null, tipos = { mantenimiento: true, combustible: true, seguros: true }, desde = null, hasta = null, texto = '' } = filtros;
+  const { vehiculoId = null, tipos = { mantenimiento: true, combustible: true, seguros: true, km: true }, desde = null, hasta = null, texto = '' } = filtros;
   const nombreItem = id => (datos.items ?? []).find(i => i.id === id)?.nombre ?? 'Ítem eliminado';
   const filas = [];
 
@@ -89,6 +89,13 @@ export function registrosUnificados(datos, filtros = {}) {
     }
   }
 
+  if (tipos.km) {
+    for (const k of vivos(datos.kms)) {
+      filas.push({ tipo: 'km', id: k.id, fecha: k.fecha, km: k.km, vehiculoId: k.vehiculoId, monto: 0,
+        titulo: 'Lectura de kilometraje', detalle: k.notas ?? '', busqueda: ['kilometraje', 'km', k.notas] });
+    }
+  }
+
   const buscado = normalizar(texto);
   const resultado = filas
     .filter(f => (!vehiculoId || f.vehiculoId === vehiculoId) && enPeriodo(f.fecha, { desde, hasta })
@@ -104,6 +111,7 @@ function registrosKm(datos, vehiculoId) {
   return [
     ...vivos(datos.trabajos).filter(t => t.vehiculoId === vehiculoId),
     ...vivos(datos.combustible).filter(c => c.vehiculoId === vehiculoId),
+    ...vivos(datos.kms).filter(k => k.vehiculoId === vehiculoId),     // lecturas de odómetro sin gasto
   ].filter(r => Number.isFinite(r.km));
 }
 
@@ -123,14 +131,22 @@ function kmRecorridos(v, registros, inicio, fin) {
   return km > 0 ? km : null;
 }
 
+// Primer día de seguimiento de un vehículo: la fecha de alta, o antes si ya hay gastos/km registrados de fechas anteriores
+// (p. ej. se dio de alta hoy con el km de hoy pero se cargan gastos de las semanas previas). Así el km recorrido y los
+// promedios cubren todo lo registrado y `kmInicial` sigue siendo el primer punto del odómetro.
+function inicioSeguimiento(datos, v, hoy) {
+  const fechas = [v.fechaAlta, ...registrosKm(datos, v.id).map(r => r.fecha)].filter(Boolean).sort();
+  return fechas[0] ?? hoy;
+}
+
 // ---- KPIs por vehículo ----
 export function kpisVehiculo(datos, vehiculoId, periodo, incluir, hoy) {
   const v = vehiculoPorId(datos, vehiculoId);
   if (!v) return null;
   const registros = registrosKm(datos, vehiculoId);
-  const fechaAlta = v.fechaAlta ?? (registros.length ? registros.map(r => r.fecha).sort()[0] : hoy);
+  const desdeSeguimiento = inicioSeguimiento(datos, v, hoy);
 
-  const inicio = max(periodo.desde ?? fechaAlta, fechaAlta);
+  const inicio = max(periodo.desde ?? desdeSeguimiento, desdeSeguimiento);
   const fin = min(periodo.hasta ?? hoy, hoy);
   const dias = fin >= inicio ? diasEntre(inicio, fin) + 1 : 0;
   const meses = Math.max(1, dias / DIAS_POR_MES);
@@ -209,7 +225,7 @@ export function kpisGlobal(datos, periodo, incluir, hoy) {
   const gasto = suma(por, k => k.gasto);
   const km = suma(por, k => k.km ?? 0);
 
-  const primerAlta = vehiculos.map(v => v.fechaAlta).filter(Boolean).sort()[0] ?? hoy;
+  const primerAlta = vehiculos.map(v => inicioSeguimiento(datos, v, hoy)).sort()[0] ?? hoy;
   const inicio = max(periodo.desde ?? primerAlta, primerAlta);
   const fin = min(periodo.hasta ?? hoy, hoy);
   const dias = fin >= inicio ? diasEntre(inicio, fin) + 1 : 0;
@@ -450,7 +466,7 @@ export function precioAnomalo(precio, ultimoPrecio, umbralPct) {
 // Por `id`, gana el `act` más reciente (empate → local). Los borrados se propagan: nunca se pierde un registro.
 export function fusionar(local, remoto) {
   const resultado = { version: local.version ?? remoto.version ?? 1 };
-  for (const col of ['vehiculos', 'items', 'trabajos', 'combustible', 'seguros']) {
+  for (const col of ['vehiculos', 'items', 'trabajos', 'combustible', 'seguros', 'kms', 'categorias']) {
     const mapa = new Map();
     for (const r of remoto[col] ?? []) mapa.set(r.id, r);
     for (const r of local[col] ?? []) {

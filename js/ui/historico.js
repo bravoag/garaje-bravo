@@ -9,11 +9,11 @@ import { exportarExcel } from '../exportar.js';
 import { colorSeguro, abrirHoja, toast } from './componentes.js';
 
 // El filtro sobrevive mientras la app está abierta (volver desde el detalle no lo pierde).
-const filtro = { vehiculoId: null, tipos: { mantenimiento: true, combustible: true, seguros: true }, desde: '', hasta: '', texto: '' };
+const filtro = { vehiculoId: null, tipos: { mantenimiento: true, combustible: true, seguros: true, km: true }, desde: '', hasta: '', texto: '' };
 
-const ETIQUETA_TIPO = { trabajo: 'Servicio', combustible: 'Combustible', seguro: 'Seguro' };
-const RUTA_EDITAR = { trabajo: id => `#/registrar/trabajo/${id}`, combustible: id => `#/registrar/combustible/${id}`, seguro: id => `#/registrar/seguro/${id}` };
-const COLECCION = { trabajo: 'trabajos', combustible: 'combustible', seguro: 'seguros' };
+const ETIQUETA_TIPO = { trabajo: 'Servicio', combustible: 'Combustible', seguro: 'Seguro', km: 'Kilometraje' };
+const RUTA_EDITAR = { trabajo: id => `#/registrar/trabajo/${id}`, combustible: id => `#/registrar/combustible/${id}`, seguro: id => `#/registrar/seguro/${id}`, km: id => `#/registrar/km/${id}` };
+const COLECCION = { trabajo: 'trabajos', combustible: 'combustible', seguro: 'seguros', km: 'kms' };
 
 export function render(vista, param) {
   if (param !== null && param !== undefined) filtro.vehiculoId = lista('vehiculos').some(v => v.id === param) ? param : null;
@@ -21,7 +21,7 @@ export function render(vista, param) {
   if (filtro.vehiculoId && !vehiculos.some(v => v.id === filtro.vehiculoId)) filtro.vehiculoId = null;
 
   vista.innerHTML = `<div id="hist">
-    <header class="cabecera"><span class="etiqueta">Gastos</span><h1>Histórico</h1></header>
+    <header class="cabecera"><span class="etiqueta">Todo lo registrado</span><h1>Gastos</h1></header>
     <div class="chips" role="radiogroup" aria-label="Vehículo">
       <label class="chip"><input type="radio" name="veh" value="" ${!filtro.vehiculoId ? 'checked' : ''}><span>Todos</span></label>
       ${vehiculos.map(v => `<label class="chip" style="--c:${colorSeguro(v.color)}"><input type="radio" name="veh" value="${esc(v.id)}" ${v.id === filtro.vehiculoId ? 'checked' : ''}><span>${esc(v.alias)}</span></label>`).join('')}
@@ -34,6 +34,7 @@ export function render(vista, param) {
           <label class="chip"><input type="checkbox" name="tipo" value="mantenimiento" ${filtro.tipos.mantenimiento ? 'checked' : ''}><span>Servicios y mantenimiento</span></label>
           <label class="chip"><input type="checkbox" name="tipo" value="combustible" ${filtro.tipos.combustible ? 'checked' : ''}><span>Combustible</span></label>
           <label class="chip"><input type="checkbox" name="tipo" value="seguros" ${filtro.tipos.seguros ? 'checked' : ''}><span>Seguros</span></label>
+          <label class="chip"><input type="checkbox" name="tipo" value="km" ${filtro.tipos.km ? 'checked' : ''}><span>Kilometraje</span></label>
         </div>
         <div class="fila">
           <label class="campo">Desde<input class="entrada" type="date" name="desde" value="${esc(filtro.desde)}"></label>
@@ -58,7 +59,7 @@ export function render(vista, param) {
     franja.innerHTML = `<span class="etiqueta">Total gastado</span><b class="franja-total">${esc(formatoUSD(r.total))}</b>${desglose}`;
 
     if (!r.filas.length) {
-      const hayDatos = lista('trabajos').length || lista('combustible').length || lista('seguros').length;
+      const hayDatos = lista('trabajos').length || lista('combustible').length || lista('seguros').length || lista('kms').length;
       filas.innerHTML = `
         <section class="tarjeta vacio">
           <h2>${hayDatos ? 'Sin resultados' : 'Aún no hay registros'}</h2>
@@ -76,7 +77,7 @@ export function render(vista, param) {
           <b>${esc(f.titulo)}</b>
           <small>${esc(formatoFecha(f.fecha))} · ${esc(v?.alias ?? '—')}${f.detalle ? ' · ' + esc(f.detalle) : ''}</small>
         </span>
-        <span class="vehiculo-km">${esc(formatoUSD(f.monto))}${f.km != null ? `<small>${esc(formatoKm(f.km))}</small>` : ''}</span>
+        <span class="vehiculo-km">${f.tipo === 'km' ? esc(formatoKm(f.km)) : `${esc(formatoUSD(f.monto))}${f.km != null ? `<small>${esc(formatoKm(f.km))}</small>` : ''}`}</span>
       </button>`;
     }).join('');
   }
@@ -134,6 +135,13 @@ function detalle(tipo, id, alCambiar) {
         ${r.estacion ? `<dt>Estación</dt><dd>${esc(r.estacion)}</dd>` : ''}
       </dl>
       <p class="total-detalle">Total <b>${esc(formatoUSD(r.total))}</b></p>`;
+  } else if (tipo === 'km') {
+    contenido = `
+      <dl class="datos">
+        <dt>Vehículo</dt><dd>${esc(v?.alias ?? '—')}</dd>
+        <dt>Fecha</dt><dd>${esc(formatoFecha(r.fecha))}</dd>
+        <dt>Km</dt><dd>${esc(formatoKm(r.km))}</dd>
+      </dl>`;
   } else {
     contenido = `
       <dl class="datos">

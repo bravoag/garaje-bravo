@@ -8,7 +8,7 @@ import { colorSeguro, toast, selectorItem } from './componentes.js';
 
 export function render(vista, param) {
   const [tipo, id] = (param ?? '').split('/');
-  const formularios = { trabajo: [formularioTrabajo, 'trabajos'], combustible: [formularioCombustible, 'combustible'], seguro: [formularioSeguro, 'seguros'] };
+  const formularios = { km: [formularioKm, 'kms'], trabajo: [formularioTrabajo, 'trabajos'], combustible: [formularioCombustible, 'combustible'], seguro: [formularioSeguro, 'seguros'] };
   if (formularios[tipo]) {
     const [formulario, coleccion] = formularios[tipo];
     const existente = id ? obtener(coleccion, id) : null;
@@ -24,6 +24,7 @@ function menu(vista) {
   vista.innerHTML = `
     <header class="cabecera"><span class="etiqueta">Nuevo registro</span><h1>Registrar</h1></header>
     <nav class="lista" aria-label="Tipo de registro">
+      <a href="#/registrar/km">Actualizar kilometraje</a>
       <a href="#/registrar/trabajo">Trabajo de mantenimiento</a>
       <a href="#/registrar/combustible">Combustible</a>
       ${usaSeguros ? '<a href="#/registrar/seguro">Seguro o documento</a>' : ''}
@@ -76,7 +77,7 @@ export function formularioTrabajo(vista, existente) {
 
   vista.innerHTML = `
     <header class="cabecera">
-      <a class="volver" href="#/${existente ? 'historico' : 'registrar'}">‹ ${existente ? 'Histórico' : 'Registrar'}</a>
+      <a class="volver" href="#/${existente ? 'historico' : 'registrar'}">‹ ${existente ? 'Gastos' : 'Registrar'}</a>
       <h1>${existente ? 'Editar trabajo' : 'Nuevo trabajo'}</h1>
     </header>
     <form class="formulario" novalidate>
@@ -260,7 +261,7 @@ export function formularioCombustible(vista, existente) {
 
   vista.innerHTML = `
     <header class="cabecera">
-      <a class="volver" href="#/${existente ? 'historico' : 'registrar'}">‹ ${existente ? 'Histórico' : 'Registrar'}</a>
+      <a class="volver" href="#/${existente ? 'historico' : 'registrar'}">‹ ${existente ? 'Gastos' : 'Registrar'}</a>
       <h1>${existente ? 'Editar llenado' : 'Nuevo llenado'}</h1>
     </header>
     <form class="formulario" novalidate>
@@ -344,7 +345,7 @@ export function formularioSeguro(vista, existente) {
 
   vista.innerHTML = `
     <header class="cabecera">
-      <a class="volver" href="#/${existente ? 'historico' : 'registrar'}">‹ ${existente ? 'Histórico' : 'Registrar'}</a>
+      <a class="volver" href="#/${existente ? 'historico' : 'registrar'}">‹ ${existente ? 'Gastos' : 'Registrar'}</a>
       <h1>${existente ? 'Editar documento' : 'Seguro o documento'}</h1>
     </header>
     <form class="formulario" novalidate>
@@ -383,6 +384,48 @@ export function formularioSeguro(vista, existente) {
       poliza: String(f.get('poliza')).trim(), desde, vence, monto, notas: String(f.get('notas')).trim(),
     });
     toast('Documento guardado');
+    location.hash = existente ? '#/historico' : '#/inicio';
+  });
+}
+
+// ---------- Kilometraje (lectura de odómetro sin gasto) ----------
+export function formularioKm(vista, existente) {
+  const vehiculos = lista('vehiculos').filter(v => v.estado !== 'vendido' || v.id === existente?.vehiculoId);
+  if (!vehiculos.length) return sinVehiculos(vista, 'Kilometraje');
+
+  vista.innerHTML = `
+    <header class="cabecera">
+      <a class="volver" href="#/${existente ? 'historico' : 'registrar'}">‹ ${existente ? 'Gastos' : 'Registrar'}</a>
+      <h1>${existente ? 'Editar kilometraje' : 'Actualizar kilometraje'}</h1>
+    </header>
+    <form class="formulario" novalidate>
+      <fieldset class="campo"><legend>Vehículo</legend>${chipsVehiculos(vehiculos, existente?.vehiculoId ?? vehiculoPorDefecto(vehiculos))}</fieldset>
+      <div class="fila">
+        <label class="campo">Fecha<input class="entrada" type="date" name="fecha" value="${esc(existente?.fecha ?? hoyISO())}" required></label>
+        <label class="campo">Km actual<input class="entrada" type="number" inputmode="numeric" min="0" step="1" name="km" value="${esc(existente?.km ?? '')}" required></label>
+      </div>
+      <p class="ayuda" id="ayuda-km"></p>
+      <label class="campo">Notas (opcional)<textarea class="entrada" name="notas" rows="2">${esc(existente?.notas ?? '')}</textarea></label>
+      <p class="error" role="alert" hidden></p>
+      <button class="btn btn-primario ancho" type="submit">Guardar kilometraje</button>
+    </form>`;
+
+  const form = vista.querySelector('form');
+  const errorEl = form.querySelector('.error');
+  const mostrarError = msg => { errorEl.textContent = msg; errorEl.hidden = false; };
+  const ayudaKm = () => { vista.querySelector('#ayuda-km').textContent = `Último km registrado de este vehículo: ${formatoKm(kmActual(datos, form.vehiculoId.value))}`; };
+  form.addEventListener('change', e => { if (e.target.name === 'vehiculoId') ayudaKm(); });
+  ayudaKm();
+
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const f = new FormData(form);
+    const fecha = f.get('fecha'), km = num(f.get('km'));
+    if (!parseFecha(fecha)) return mostrarError('Indica una fecha válida.');
+    if (km === null || !(km >= 0)) return mostrarError('Indica el km actual del vehículo.');
+    if (!confirmarKm(f.get('vehiculoId'), fecha, km, existente?.id)) return;
+    guardar('kms', { ...existente, vehiculoId: f.get('vehiculoId'), fecha, km, notas: String(f.get('notas')).trim() });
+    toast(`Kilometraje actualizado · ${formatoKm(km)}`);
     location.hash = existente ? '#/historico' : '#/inicio';
   });
 }

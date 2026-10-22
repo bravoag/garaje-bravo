@@ -5,12 +5,17 @@ import { recalcularUltimo, fusionar } from './calc.js';
 
 const CLAVE = 'garaje.datos';
 const CLAVE_PENDIENTE = 'garaje.pendiente';
-export const COLECCIONES = ['vehiculos', 'items', 'trabajos', 'combustible', 'seguros'];
+export const COLECCIONES = ['vehiculos', 'items', 'trabajos', 'combustible', 'seguros', 'kms', 'categorias'];
+
+// Categorías iniciales. Ids FIJOS (no aleatorios): si dos dispositivos las siembran por separado, al sincronizar convergen
+// en los mismos registros y no se duplican. `act` antiguo para que cualquier edición real gane siempre.
+export const CATEGORIAS_BASE = ['Motor', 'Frenos', 'Suspensión y dirección', 'Neumáticos', 'Eléctrico', 'Fluidos y filtros', 'Transmisión', 'Carrocería', 'Aire y clima', 'Otros'];
+const slug = t => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
 const CONFIG_DEFECTO = { umbralPrecioPct: 20, diasSinKm: 30 };
 
 function vacio() {
-  return { version: 1, vehiculos: [], items: [], trabajos: [], combustible: [], seguros: [], config: { ...CONFIG_DEFECTO } };
+  return { version: 1, vehiculos: [], items: [], trabajos: [], combustible: [], seguros: [], kms: [], categorias: [], config: { ...CONFIG_DEFECTO } };
 }
 
 // Objeto único: los demás módulos importan esta referencia y siempre ven el contenido vigente.
@@ -26,6 +31,13 @@ export function aplicarDatos(origen) {
   base.config = { ...CONFIG_DEFECTO, ...(origen?.config ?? {}) };
   base.version = origen?.version ?? 1;
   Object.assign(datos, base);
+  sembrarCategorias();
+}
+
+// Solo si NO existe ningún registro de categoría (ni borrado): datos nuevos o anteriores a las categorías editables.
+function sembrarCategorias() {
+  if (datos.categorias.length) return;
+  datos.categorias = CATEGORIAS_BASE.map(nombre => ({ id: `cat-${slug(nombre)}`, nombre, act: '2000-01-01T00:00:00.000Z' }));
 }
 
 export function cargarLocal() {
@@ -104,6 +116,31 @@ function cambio() {
   // Si el navegador no deja guardar (sin espacio, modo privado) la app avisa: el dato solo está en memoria.
   if (!persistirLocal()) globalThis.dispatchEvent?.(new Event('garaje:sin-espacio'));
   suscriptores.forEach(fn => fn());
+}
+
+// ---- Categorías de ítems (editables) ----
+const normal = t => String(t ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+export function nombresCategorias() {
+  return lista('categorias').map(c => c.nombre).sort((a, b) => (a === 'Otros') - (b === 'Otros') || a.localeCompare(b, 'es'));
+}
+export function categoriaExiste(nombre, exceptoId = null) {
+  return lista('categorias').some(c => c.id !== exceptoId && normal(c.nombre) === normal(nombre));
+}
+export const itemsDeCategoria = nombre => lista('items').filter(i => i.categoria === nombre);
+
+// Renombrar: los ítems que la usan pasan al nombre nuevo (se guardan por nombre).
+export function renombrarCategoria(id, nombreNuevo) {
+  const cat = datos.categorias.find(c => c.id === id);
+  const viejo = cat.nombre;
+  guardar('categorias', { ...cat, nombre: nombreNuevo });
+  if (viejo !== nombreNuevo) for (const i of itemsDeCategoria(viejo)) guardar('items', { ...i, categoria: nombreNuevo });
+}
+
+// Eliminar: antes se mueven sus ítems a `destino` (otra categoría) para no dejar nada sin clasificar.
+export function eliminarCategoria(id, destino) {
+  const cat = datos.categorias.find(c => c.id === id);
+  for (const i of itemsDeCategoria(cat.nombre)) guardar('items', { ...i, categoria: destino });
+  borrar('categorias', id);
 }
 
 // Importación de un respaldo: se fusiona por id con lo que ya hay (gana el act más reciente), sin borrar nada.
