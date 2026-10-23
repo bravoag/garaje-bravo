@@ -64,7 +64,7 @@ export function render(vista) {
         <span>Gasto mensual${enOperacion ? ' · operación' : ''}<b>${esc(formatoUSD(k.gastoMensual))}</b></span>
       </span>
       ${ritmo ? `<span class="vi-ritmo">Ritmo: ${esc(formatoNumero(ritmo.kmPorDia, 0))} km/día · ~${esc(formatoKm(ritmo.kmAnual))}/año</span>` : ''}
-      ${pp.enCurso && pp.puesta.gasto > 0 ? `<span class="estado estado-sin-registro"><span aria-hidden="true">●</span> Puesta a punto en curso · ${esc(formatoUSD(pp.puesta.gasto))}</span>` : ''}
+      ${pp.aplica && pp.enCurso && pp.puesta.gasto > 0 ? `<span class="estado estado-sin-registro"><span aria-hidden="true">●</span> Puesta a punto en curso · ${esc(formatoUSD(pp.puesta.gasto))}</span>` : ''}
       ${chipAlerta(a, v.programados?.length > 0)}
     </a>`;
   }).join('');

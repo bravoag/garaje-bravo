@@ -1,7 +1,7 @@
 // ui/vehiculos.js — lista de vehículos y formulario de alta/edición (con servicios programados por vehículo).
 import { datos, lista, obtener, guardar } from '../estado.js';
 import { esc, hoyISO, formatoKm, formatoFecha } from '../util.js';
-import { kmActual, recordatorios } from '../calc.js';
+import { kmActual, recordatorios, usaPuestaAPunto } from '../calc.js';
 import { COLORES, colorSeguro, toast, selectorItem, chipEstado } from './componentes.js';
 
 const COMBUSTIBLES = ['gasolina', 'diésel', 'gas', 'eléctrico', 'híbrido'];
@@ -90,8 +90,9 @@ function formulario(vista, v) {
         ${campo('fechaCompra', 'Fecha de compra (opcional)', 'type="date"')}
         ${campo('precioCompra', 'Precio de compra USD (opcional)', 'type="number" inputmode="decimal" min="0" step="0.01"')}
       </div>
+      <label class="interruptor"><input type="checkbox" name="usaPuestaAPunto" ${usaPuestaAPunto(d, hoyISO()) ? 'checked' : ''}> Vehículo en puesta a punto (recién comprado)</label>
       ${campo('puestaAPuntoHasta', 'Puesta a punto hasta (opcional)', 'type="date"')}
-      <p class="ayuda">Para un vehículo recién comprado: déjalo vacío mientras sigas poniéndolo al día. Cuando termines, pon la fecha del último trabajo: lo anterior cuenta como puesta a punto y lo posterior como operación normal.</p>
+      <p class="ayuda">Solo para un vehículo comprado hace poco que estás poniendo al día. Déjalo sin fecha mientras sigas con los trabajos; al terminar, pon la fecha del último: lo anterior cuenta como puesta a punto y lo posterior como operación normal. Si ya tenías el vehículo de antes, deja la casilla apagada.</p>
       <label class="interruptor"><input type="checkbox" name="usaSeguros" ${d.usaSeguros ? 'checked' : ''}> Usa seguros y documentos</label>
       <label class="campo">Notas<textarea class="entrada" name="notas" rows="2">${esc(d.notas ?? '')}</textarea></label>
 
@@ -191,7 +192,7 @@ function formulario(vista, v) {
       ...d,
       alias: texto('alias'), marca: texto('marca'), modelo: texto('modelo'), anio, placa: texto('placa'),
       color: f.get('color'), kmInicial, fechaAlta: texto('fechaAlta') || hoyISO(),
-      combustible: texto('combustible'), vin: texto('vin'), fechaCompra: texto('fechaCompra'), precioCompra: numero('precioCompra'), puestaAPuntoHasta: texto('puestaAPuntoHasta') || null,
+      combustible: texto('combustible'), vin: texto('vin'), fechaCompra: texto('fechaCompra'), precioCompra: numero('precioCompra'), puestaAPuntoHasta: texto('puestaAPuntoHasta') || null, usaPuestaAPunto: form.usaPuestaAPunto.checked || Boolean(texto('puestaAPuntoHasta')),
       usaSeguros: form.usaSeguros.checked, notas: texto('notas'), estado: d.estado ?? 'activo',
       programados: programados.map(p => ({ itemId: p.itemId, intervaloKm: p.intervaloKm || null, intervaloMeses: p.intervaloMeses || null })),
     });

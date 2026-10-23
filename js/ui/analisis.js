@@ -163,7 +163,7 @@ function seccionInversion(vehiculoId) {
     ${barraPartes([
       { nombre: 'Compra', valor: inv.compra ?? 0, color: CATEGORICOS[0] },
       { nombre: puestaEnCurso ? 'Puesta a punto (en curso)' : 'Puesta a punto', valor: inv.puesta, color: CATEGORICOS[1] },
-      { nombre: 'Operación normal', valor: inv.operacion, color: CATEGORICOS[2] },
+      { nombre: inv.puestaAplica ? 'Operación normal' : 'Gastos registrados', valor: inv.operacion, color: CATEGORICOS[2] },
     ], 'Reparto de la inversión total')}
     ${inv.pctGastoSobreCompra !== null ? `<p class="ayuda">Lo gastado después de comprar equivale al ${esc(formatoNumero(inv.pctGastoSobreCompra, 1))} % del precio de compra.</p>` : '<p class="ayuda">Pon el precio de compra en el vehículo para ver esta proporción.</p>'}
     <p class="ayuda">Es acumulado: no depende del período elegido arriba.</p>
@@ -174,7 +174,7 @@ function seccionInversion(vehiculoId) {
 function seccionPuestaAPunto(vehiculoId) {
   if (!vehiculoId) return '';
   const p = puestaAPunto(datos, vehiculoId, hoyISO());
-  if (!p) return '';
+  if (!p?.aplica) return '';
   const op = p.operacion;
   return `<section class="tarjeta">
     <h2>Puesta a punto</h2>

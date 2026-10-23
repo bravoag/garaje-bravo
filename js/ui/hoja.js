@@ -76,7 +76,7 @@ export function render(vista, param) {
       </section>
 
       <section>
-        <h2>Historial de mantenimiento</h2>
+        <h2>Historial de mantenimiento <span class="gris">(del más reciente al más antiguo)</span></h2>
         ${h.historial.length ? `<table class="hv-tabla">
           <thead><tr><th>Fecha</th><th>Km</th><th>Tipo</th><th>Ítems</th><th>Total</th></tr></thead>
           <tbody>${filas}</tbody></table>` : '<p class="gris">Sin trabajos en el período elegido.</p>'}

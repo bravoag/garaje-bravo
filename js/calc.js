@@ -122,18 +122,36 @@ export function kmActual(datos, vehiculoId) {
   return registrosKm(datos, vehiculoId).reduce((m, r) => max(m, r.km), v?.kmInicial ?? 0);
 }
 
-// Km recorridos en [inicio, fin]: kmFin − kmIni (secc. 10). null si resulta ≤ 0.
+// Puntos del odómetro: cada registro con km más el km de alta (`kmInicial` en `fechaAlta`).
+// Si hay registros ANTERIORES a la fecha de alta con km MAYOR que el km de alta, las fechas no cuadran (se dio de alta con la
+// fecha de hoy pero el km era el de la compra): el km de alta se ubica en la fecha del primer registro. Si el historial anterior
+// tiene km menores (se dio de alta hoy con el km de hoy), la fecha de alta se respeta.
+function puntosKm(v, registros) {
+  if (!Number.isFinite(v.kmInicial)) return [...registros].sort(porFechaKm);
+  const primera = registros.map(r => r.fecha).sort()[0];
+  const fechaAlta = v.fechaAlta ?? primera;
+  const incoherente = registros.some(r => r.fecha < fechaAlta && r.km > v.kmInicial);
+  const base = { fecha: incoherente ? primera : fechaAlta, km: v.kmInicial };
+  return [...registros, base].filter(p => p.fecha).sort(porFechaKm);
+}
+
+// Km recorridos en [inicio, fin] = kmFin − kmIni; null si resulta ≤ 0.
+// kmFin = mayor km con fecha ≤ fin. kmIni = km del último punto con fecha < inicio; si no hay (el rango arranca en el primer
+// punto del odómetro) es el km de ese primer punto. El km de alta es un punto más, ubicado en SU fecha: si el vehículo ya tenía
+// historial anterior (se dio de alta hoy con el km de hoy), ese historial queda con km menores y la cuenta cuadra.
 function kmRecorridos(v, registros, inicio, fin) {
-  const kmFin = registros.filter(r => r.fecha <= fin).reduce((m, r) => max(m, r.km), v.kmInicial ?? 0);
-  const previos = registros.filter(r => r.fecha < inicio).sort(porFechaKm);
-  const kmIni = previos.length ? previos[previos.length - 1].km : (v.kmInicial ?? 0);
+  const puntos = puntosKm(v, registros);
+  const hasta = puntos.filter(p => p.fecha <= fin);
+  if (!hasta.length) return null;
+  const kmFin = hasta.reduce((m, p) => max(m, p.km), -Infinity);
+  const previos = puntos.filter(p => p.fecha < inicio);
+  const kmIni = previos.length ? previos[previos.length - 1].km : puntos[0].km;
   const km = kmFin - kmIni;
   return km > 0 ? km : null;
 }
 
 // Primer día de seguimiento de un vehículo: la fecha de alta, o antes si ya hay gastos/km registrados de fechas anteriores
-// (p. ej. se dio de alta hoy con el km de hoy pero se cargan gastos de las semanas previas). Así el km recorrido y los
-// promedios cubren todo lo registrado y `kmInicial` sigue siendo el primer punto del odómetro.
+// (p. ej. se dio de alta hoy pero se cargó el historial de años previos). Así los promedios cubren todo lo registrado.
 function inicioSeguimiento(datos, v, hoy) {
   const fechas = [v.fechaAlta, ...registrosKm(datos, v.id).map(r => r.fecha)].filter(Boolean).sort();
   return fechas[0] ?? hoy;
@@ -277,14 +295,23 @@ export function kpisGlobal(datos, periodo, incluir, hoy) {
 // Una sola fecha por vehículo (`puestaAPuntoHasta`) divide TODO lo registrado: hasta esa fecha (inclusive) es puesta a punto;
 // desde el día siguiente es operación normal. Sin fecha (o en el futuro) la puesta a punto sigue en curso.
 const TODO_INCLUIDO = { mantenimiento: true, combustible: true, seguros: true };
+// ¿Este vehículo usa puesta a punto? Casilla explícita del formulario; con fecha de fin siempre. Si nunca se decidió (datos de antes
+// de esta casilla) se asume que sí cuando se compró hace ≤ 90 días: un auto que ya tenías de años no la tiene.
+export function usaPuestaAPunto(v, hoy) {
+  if (v.puestaAPuntoHasta) return true;
+  if (typeof v.usaPuestaAPunto === 'boolean') return v.usaPuestaAPunto;
+  return Boolean(v.fechaCompra) && diasEntre(v.fechaCompra, hoy) >= 0 && diasEntre(v.fechaCompra, hoy) <= 90;
+}
+
 export function puestaAPunto(datos, vehiculoId, hoy) {
   const v = vehiculoPorId(datos, vehiculoId);
   if (!v) return null;
+  if (!usaPuestaAPunto(v, hoy)) return { aplica: false, fin: null, enCurso: false, puesta: null, operacion: null };
   const fin = v.puestaAPuntoHasta || null;
   const enCurso = !fin || fin > hoy;
   const puesta = kpisVehiculo(datos, vehiculoId, { desde: null, hasta: enCurso ? null : fin }, TODO_INCLUIDO, hoy);
   const operacion = !enCurso && fin < hoy ? kpisVehiculo(datos, vehiculoId, { desde: sumarDias(fin, 1), hasta: null }, TODO_INCLUIDO, hoy) : null;
-  return { fin, enCurso, puesta, operacion };
+  return { aplica: true, fin, enCurso, puesta, operacion };
 }
 
 // Inversión desde la compra: precio de compra + gasto de puesta a punto + gasto de operación normal.
@@ -293,8 +320,10 @@ export function inversionTotal(datos, vehiculoId, hoy) {
   if (!v) return null;
   const p = puestaAPunto(datos, vehiculoId, hoy);
   const compra = Number.isFinite(v.precioCompra) ? v.precioCompra : null;
-  const puesta = p.puesta.gasto, operacion = p.operacion?.gasto ?? 0;
-  return { compra, puesta, operacion, total: (compra ?? 0) + puesta + operacion, enCurso: p.enCurso,
+  // Sin puesta a punto, todo lo gastado cuenta como operación normal.
+  const puesta = p.puesta?.gasto ?? 0;
+  const operacion = p.aplica ? (p.operacion?.gasto ?? 0) : kpisVehiculo(datos, vehiculoId, { desde: null, hasta: null }, TODO_INCLUIDO, hoy).gasto;
+  return { compra, puesta, operacion, total: (compra ?? 0) + puesta + operacion, enCurso: p.enCurso, puestaAplica: p.aplica,
     pctGastoSobreCompra: compra ? ((puesta + operacion) / compra) * 100 : null };
 }
 
@@ -303,7 +332,7 @@ export function inversionFlota(datos, hoy) {
   const compras = por.filter(i => i.compra !== null);
   const compra = suma(compras, i => i.compra);
   const puesta = suma(por, i => i.puesta), operacion = suma(por, i => i.operacion);
-  return { compra, puesta, operacion, total: compra + puesta + operacion,
+  return { compra, puesta, operacion, total: compra + puesta + operacion, puestaAplica: por.some(i => i.puestaAplica),
     pctGastoSobreCompra: compra ? ((suma(compras, i => i.puesta + i.operacion)) / compra) * 100 : null };
 }
 
@@ -317,7 +346,7 @@ export function ritmoUso(datos, vehiculoId, hoy) {
   if (!registros.length) return null;
   const ultimo = registros[registros.length - 1];
   const previos = registros.filter(r => r.fecha <= sumarDias(ultimo.fecha, -90));
-  const ref = previos.length ? previos[previos.length - 1] : { fecha: inicioSeguimiento(datos, v, hoy), km: v.kmInicial ?? 0 };
+  const ref = previos.length ? previos[previos.length - 1] : puntosKm(v, registros)[0];
   const dias = diasEntre(ref.fecha, ultimo.fecha);
   const km = ultimo.km - ref.km;
   if (dias < 14 || km <= 0) return null;
@@ -463,8 +492,9 @@ export function hojaDeVida(datos, vehiculoId, periodo, hoy) {
   const nombreItem = id => (datos.items ?? []).find(i => i.id === id)?.nombre ?? 'Ítem eliminado';
   const todos = vivos(datos.trabajos).filter(t => t.vehiculoId === vehiculoId).sort(porFechaKm);
   const trabajos = todos.filter(t => enPeriodo(t.fecha, periodo));
+  const recientesPrimero = [...trabajos].reverse();   // el PDF lista del más reciente al más antiguo
 
-  const historial = trabajos.map(t => ({
+  const historial = recientesPrimero.map(t => ({
     id: t.id, fecha: t.fecha, km: t.km, tipoMtto: t.tipoMtto, total: t.total,
     lineas: (t.lineas ?? []).map(l => ({ nombre: nombreItem(l.itemId), cantidad: l.cantidad, precioUnit: l.precioUnit, subtotal: redondear2(l.cantidad * l.precioUnit) })),
   }));
