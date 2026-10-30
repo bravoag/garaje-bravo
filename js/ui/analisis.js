@@ -272,7 +272,7 @@ function pestanaCombustible(contenido, { k, vehiculoId, vehiculos }) {
     return;
   }
 
-  const kmLPorVeh = porVeh.map(x => ({ alias: nombreDe(x.vehiculoId)?.alias ?? '—', color: colorSeguro(nombreDe(x.vehiculoId)?.color), val: x.combustible.kmPorLitroPromedio, costoKm: x.costoCombustiblePorKm }));
+  const kmLPorVeh = porVeh.map(x => ({ alias: nombreDe(x.vehiculoId)?.alias ?? '—', color: colorSeguro(nombreDe(x.vehiculoId)?.color), val: x.combustible.kmPorLitroPromedio, costoKm: x.costoCombustiblePorKm, primera: x.combustible.primera, kmDesde: x.combustible.kmDesdePrimera })); 
   const seriesKmL = porVeh.map(x => ({ nombre: nombreDe(x.vehiculoId)?.alias ?? '—', color: colorSeguro(nombreDe(x.vehiculoId)?.color), puntos: x.combustible.llenados.filter(l => l.kmPorLitro !== null).map(l => ({ fecha: l.fecha, y: l.kmPorLitro })) })).filter(s => s.puntos.length);
   const seriesPrecio = porVeh.map(x => ({ nombre: nombreDe(x.vehiculoId)?.alias ?? '—', color: colorSeguro(nombreDe(x.vehiculoId)?.color), puntos: x.combustible.precioLitro.filter(p => Number.isFinite(p.precioLitro)).map(p => ({ fecha: p.fecha, y: p.precioLitro })) })).filter(s => s.puntos.length);
 
@@ -286,7 +286,7 @@ function pestanaCombustible(contenido, { k, vehiculoId, vehiculos }) {
       <div class="ranking">${kmLPorVeh.map(x => `<div class="rank-fila" style="--c:${x.color}">
         <span class="rank-nombre"><i class="vehiculo-punto" aria-hidden="true"></i>${esc(x.alias)}</span>
         <span class="rank-valor">${x.val === null ? dash : esc(formatoNumero(x.val, 1) + ' km/L')}</span>
-        <small class="apagado rank-sub">${x.costoKm === null ? '' : esc(usdKm(x.costoKm)) + ' en combustible'}</small></div>`).join('')}</div>
+        <small class="apagado rank-sub">${x.costoKm === null ? (x.primera ? 'Con una sola carga aún no se puede medir el costo por km: registra la siguiente.' : '') : `${esc(usdKm(x.costoKm))} en combustible · desde la primera carga (${esc(formatoFecha(x.primera.fecha))}) · ${esc(formatoKm(x.kmDesde))}`}</small></div>`).join('')}</div>
       ${kmLPorVeh.every(x => x.val === null) ? '<p class="ayuda">Para calcular km/L necesitas al menos dos llenados con «tanque lleno».</p>' : ''}
     </section>
     ${seriesKmL.length ? `<section class="tarjeta"><h2>km por litro en cada llenado</h2>

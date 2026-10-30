@@ -1,7 +1,7 @@
 // ui/registrar.js — menú "+" y formulario de Trabajo (también lo usa Histórico para editar).
 // Rutas: #/registrar, #/registrar/trabajo, #/registrar/trabajo/<id>
 import { datos, lista, obtener, guardar, recalcularItems } from '../estado.js';
-import { esc, hoyISO, nuevoId, parseFecha, formatoUSD, formatoFecha, formatoKm } from '../util.js';
+import { esc, hoyISO, nuevoId, parseFecha, parseNumero, formatoUSD, formatoFecha, formatoKm } from '../util.js';
 import { totalTrabajo, recalcularUltimo, kmActual, kmCoherente, precioAnomalo, recalcularCombustible } from '../calc.js';
 import { comprimirImagen, guardarFotoLocal, leerFotoLocal, borrarFotoLocal, registrarFotoPorBorrar } from '../foto.js';
 import { colorSeguro, toast, selectorItem } from './componentes.js';
@@ -32,7 +32,7 @@ function menu(vista) {
     ${hayVehiculos ? '' : '<p class="apagado">Primero <a href="#/vehiculos/nuevo">agrega un vehículo</a>.</p>'}`;
 }
 
-const num = v => (v === '' || v == null ? null : Number(v));
+const num = parseNumero;   // acepta coma o punto: ver util.parseNumero
 
 // Chips de vehículo (radio `vehiculoId`) con su color.
 function chipsVehiculos(vehiculos, seleccionado) {
@@ -143,8 +143,8 @@ export function formularioTrabajo(vista, existente) {
         </div>
         <p class="ayuda" data-ultima></p>
         <div class="fila">
-          <label class="campo">Cantidad<input class="entrada" data-campo="cantidad" type="number" inputmode="decimal" min="0" step="any" value="${esc(l.cantidad ?? 1)}"></label>
-          <label class="campo">Precio unit. USD<input class="entrada" data-campo="precioUnit" type="number" inputmode="decimal" min="0" step="0.01" value="${esc(l.precioUnit ?? '')}"></label>
+          <label class="campo">Cantidad<input class="entrada" data-campo="cantidad" type="text" inputmode="decimal" autocomplete="off" value="${esc(l.cantidad ?? 1)}"></label>
+          <label class="campo">Precio unit. USD<input class="entrada" data-campo="precioUnit" type="text" inputmode="decimal" autocomplete="off" value="${esc(l.precioUnit ?? '')}"></label>
         </div>
         <label class="campo">Garantía hasta (opcional)<input class="entrada" data-campo="garantiaHasta" type="date" value="${esc(l.garantiaHasta ?? '')}"></label>
         <div class="linea-pie"><span class="estado estado-proximo" data-aviso></span><b data-subtotal></b></div>
@@ -272,10 +272,10 @@ export function formularioCombustible(vista, existente) {
       </div>
       <p class="ayuda" id="ayuda-km"></p>
       <div class="fila">
-        <label class="campo">Litros<input class="entrada" type="number" inputmode="decimal" min="0" step="any" name="litros" value="${esc(existente?.litros ?? '')}" required></label>
-        <label class="campo">Precio por litro<input class="entrada" type="number" inputmode="decimal" min="0" step="any" name="precioLitro" value="${esc(existente?.precioLitro ?? '')}"></label>
+        <label class="campo">Litros<input class="entrada" type="text" inputmode="decimal" autocomplete="off" name="litros" value="${esc(existente?.litros ?? '')}" required></label>
+        <label class="campo">Precio por litro<input class="entrada" type="text" inputmode="decimal" autocomplete="off" name="precioLitro" value="${esc(existente?.precioLitro ?? '')}"></label>
       </div>
-      <label class="campo">Total USD<input class="entrada" type="number" inputmode="decimal" min="0" step="0.01" name="total" value="${esc(existente?.total ?? '')}" required></label>
+      <label class="campo">Total USD<input class="entrada" type="text" inputmode="decimal" autocomplete="off" name="total" value="${esc(existente?.total ?? '')}" required></label>
       <p class="ayuda">Escribe litros y precio, o litros y total: el otro dato se calcula solo.</p>
       <label class="interruptor"><input type="checkbox" name="tanqueLleno" ${existente?.tanqueLleno === false ? '' : 'checked'}> Tanque lleno (necesario para calcular km/L)</label>
       <label class="campo">Estación (opcional)
@@ -362,7 +362,7 @@ export function formularioSeguro(vista, existente) {
         <label class="campo">Desde<input class="entrada" type="date" name="desde" value="${esc(existente?.desde ?? hoyISO())}" required></label>
         <label class="campo">Vence<input class="entrada" type="date" name="vence" value="${esc(existente?.vence ?? '')}" required></label>
       </div>
-      <label class="campo">Monto USD (puede ser 0)<input class="entrada" type="number" inputmode="decimal" min="0" step="0.01" name="monto" value="${esc(existente?.monto ?? '')}" required></label>
+      <label class="campo">Monto USD (puede ser 0)<input class="entrada" type="text" inputmode="decimal" autocomplete="off" name="monto" value="${esc(existente?.monto ?? '')}" required></label>
       <label class="campo">Notas<textarea class="entrada" name="notas" rows="2">${esc(existente?.notas ?? '')}</textarea></label>
       <p class="error" role="alert" hidden></p>
       <button class="btn btn-primario ancho" type="submit">Guardar</button>

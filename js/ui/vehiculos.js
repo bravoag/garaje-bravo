@@ -1,6 +1,6 @@
 // ui/vehiculos.js — lista de vehículos y formulario de alta/edición (con servicios programados por vehículo).
 import { datos, lista, obtener, guardar } from '../estado.js';
-import { esc, hoyISO, formatoKm, formatoFecha } from '../util.js';
+import { esc, hoyISO, formatoKm, formatoFecha, parseNumero } from '../util.js';
 import { kmActual, recordatorios, usaPuestaAPunto } from '../calc.js';
 import { COLORES, colorSeguro, toast, selectorItem, chipEstado } from './componentes.js';
 
@@ -88,7 +88,7 @@ function formulario(vista, v) {
       ${campo('vin', 'VIN (opcional)', 'autocomplete="off"')}
       <div class="fila">
         ${campo('fechaCompra', 'Fecha de compra (opcional)', 'type="date"')}
-        ${campo('precioCompra', 'Precio de compra USD (opcional)', 'type="number" inputmode="decimal" min="0" step="0.01"')}
+        ${campo('precioCompra', 'Precio de compra USD (opcional)', 'type="text" inputmode="decimal" autocomplete="off"')}
       </div>
       <label class="interruptor"><input type="checkbox" name="usaPuestaAPunto" ${usaPuestaAPunto(d, hoyISO()) ? 'checked' : ''}> Vehículo en puesta a punto (recién comprado)</label>
       ${campo('puestaAPuntoHasta', 'Puesta a punto hasta (opcional)', 'type="date"')}
@@ -174,7 +174,7 @@ function formulario(vista, v) {
     errorEl.hidden = true;
     const f = new FormData(form);
     const texto = n => String(f.get(n) ?? '').trim();
-    const numero = n => (texto(n) === '' ? null : Number(texto(n)));
+    const numero = n => parseNumero(texto(n));
 
     for (const [n, etiqueta] of [['alias', 'el alias'], ['marca', 'la marca'], ['modelo', 'el modelo'], ['placa', 'la placa']]) {
       if (!texto(n)) return mostrarError(`Falta ${etiqueta}.`);

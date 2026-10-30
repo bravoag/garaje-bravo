@@ -82,6 +82,25 @@ export function formatoNumero(n, decimales = 2) {
   return Number.isFinite(n) ? n.toLocaleString('es', { minimumFractionDigits: decimales, maximumFractionDigits: decimales }) : '—';
 }
 
+// Lee un número escrito por una persona: acepta coma o punto como decimal (teclados en español e inglés) y separadores de miles.
+// Devuelve null si no es un número. Se usa en vez de <input type="number">, que en iPhone rechaza el decimal del teclado
+// cuando la región y el idioma de la página no coinciden.
+export function parseNumero(texto) {
+  if (texto === null || texto === undefined) return null;
+  let t = String(texto).trim().replace(/\s/g, '');
+  if (!t) return null;
+  const coma = t.lastIndexOf(','), punto = t.lastIndexOf('.');
+  if (coma !== -1 && punto !== -1) {                       // 1.234,56 o 1,234.56: el último separador es el decimal
+    const dec = coma > punto ? ',' : '.';
+    t = t.split(dec === ',' ? '.' : ',').join('').replace(dec, '.');
+  } else if (coma !== -1) {
+    t = t.replace(',', '.');
+  }
+  if (!/^-?(\d+\.?\d*|\.\d+)$/.test(t)) return null;
+  const n = Number(t);
+  return Number.isFinite(n) ? n : null;
+}
+
 export function redondear2(n) {
   return Math.round((n + Number.EPSILON) * 100) / 100;
 }

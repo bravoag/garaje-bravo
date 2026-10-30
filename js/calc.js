@@ -223,7 +223,7 @@ export function kpisVehiculo(datos, vehiculoId, periodo, incluir, hoy) {
     porCategoria, topItems,
     porMes: gastoPorMes({ trabajos, combustible, seguros }),
     combustible: combustibleStats_,
-    costoCombustiblePorKm: km && gastoCombustible ? gastoCombustible / km : null,
+    costoCombustiblePorKm: combustibleStats_.costoPorKm,   // desde la primera carga, no desde el alta del vehículo
   };
 }
 
@@ -380,12 +380,20 @@ export function combustibleStats(registros, periodo) {
     const litros = suma(llenados.slice(llenados.indexOf(primero) + 1, llenados.indexOf(ultimo) + 1), l => l.litros);
     if (ultimo.km > primero.km && litros > 0) kmPorLitroPromedio = (ultimo.km - primero.km) / litros;
   }
+  // Costo por km desde la PRIMERA carga: el combustible comprado después de ella se gasta entre ese km y el del último llenado.
+  // (La primera carga repone lo consumido antes de empezar a registrar, por eso no se cuenta en este costo.)
+  const primera = llenados.length ? { fecha: llenados[0].fecha, km: llenados[0].km } : null;
+  const ultimoLlenado = llenados[llenados.length - 1];
+  const kmDesdePrimera = llenados.length >= 2 && ultimoLlenado.km > primera.km ? ultimoLlenado.km - primera.km : null;
+  const gastoDesdePrimera = suma(llenados.slice(1), l => l.total);
   return {
     llenados,
     litros: suma(llenados, l => l.litros),
     gasto: suma(llenados, l => l.total),
     precioLitro: llenados.map(l => ({ fecha: l.fecha, precioLitro: l.precioLitro })),
     kmPorLitroPromedio,
+    primera, kmDesdePrimera, gastoDesdePrimera,
+    costoPorKm: kmDesdePrimera ? gastoDesdePrimera / kmDesdePrimera : null,
   };
 }
 
